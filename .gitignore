@@ -1,3 +1,9 @@
 .venv/
 .idea/
 french-fries.iml
+.ipynb_checkpoints/
+doc/
+models/
+data/
+.DS_Store
+dev.ipynb

@@ -5,13 +5,14 @@ name = "pypi"
 
 [packages]
 catboost = "*"
-pandas = "*"
+pandas = "==1.2.4"
 scipy = "*"
 scikit-learn = "*"
 xgboost = "*"
 
 [dev-packages]
 jupyter = "*"
+shap = "*"
 
 [requires]
 python_version = "3.9"
