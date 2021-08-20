@@ -9,6 +9,7 @@ pandas = "==1.2.4"
 scipy = "*"
 scikit-learn = "*"
 xgboost = "*"
+pweave = "*"
 
 [dev-packages]
 jupyter = "*"
