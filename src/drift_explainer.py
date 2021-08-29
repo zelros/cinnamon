@@ -5,13 +5,14 @@ import matplotlib.pyplot as plt
 import pickle as pkl
 from pweave import weave
 from os import path
+import pkgutil
 
 from scipy.stats import wasserstein_distance, ks_2samp
 from .tree_ensemble import CatBoostParser
 from .utils import wasserstein_distance_for_cat, chi2_test, compute_distribution_cat
 
 
-logging.basicConfig(format='%(levelname)s:%(asctime)s - (%(pathname)s) %(message)s', level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(asctime)s - (%(pathname)s) %(message)s', level=logging.INFO)
 
 
 def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
@@ -24,17 +25,27 @@ def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_w
 
 
 def compute_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
-    if sample_weights1 is None and sample_weights2 is None: # TODO: does chi2 generalize to weighted samples ?
-        chi2 = chi2_test(np.concatenate((a1, a2)), np.array([0] * len(a1) + [1] * len(a2)))
+    if sample_weights1 is None and sample_weights2 is None:
+        # TODO: does chi2 generalize to weighted samples ?
+        # indeed, I am sure it is not sufficient to compute the contingency table with weights. So the chi2 formula need
+        # to take weights into account
+        # chi2 should not take min_cat_weight into account. If pbm with number of cat, should be handled by
+        # chi2_test internally with a proper solution
+
+        # TODO chi2 not working for now
+        #chi2 = chi2_test(np.concatenate((a1, a2)), np.array([0] * len(a1) + [1] * len(a2)))
+        chi2 = None
     else:
         chi2 = None
     return {'wasserstein': wasserstein_distance_for_cat(a1, a2, sample_weights1, sample_weights2),
             'chi2_test': chi2}
 
 
-def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None, title=None):
+def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None, title=None,
+                   min_cat_weight: float = None):
+
     # compute both distributions
-    distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2)
+    distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2, min_cat_weight)
     bar_height = np.array([v for v in distrib.values()]) # len(distrib) rows and 2 columns
 
     #plot
@@ -203,35 +214,67 @@ class DriftExplainer:
             else:
                 return None
 
-    def plot_target_drift(self):
+    def plot_target_drift(self, min_cat_weight: float = 0.01):
         if self.y1 is None or self.y2 is None:
             raise ValueError('"y1" or "y2" argument was not passed to drift_explainer.fit method')
         if self.model_objective == 'multiclass_classification':
-            plot_drift_cat(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target')
+            plot_drift_cat(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
+                           min_cat_weight=min_cat_weight)
         elif self.model_objective == 'binary_classification':
             pass
         elif self.model_objective == 'regression':
             pass
 
-    def plot_feature_drift(self, feature_name):
+    def plot_prediction_drift(self):
+        if self.predictions1 is None:
+            raise ValueError('You must call the fit method before ploting drift')
+        if self.model_objective == 'multiclass_classification':
+            for i, label in enumerate(self.parsed_model.class_names):
+                plt.hist(self.predictions1[:, i], bins=100, density=True, alpha=0.3)
+                plt.hist(self.predictions2[:, i], bins=100, density=True, alpha=0.3)
+                plt.title(f'{label}')
+                plt.legend(['dataset1', 'dataset2'])
+                plt.show()
+        elif self.model_objective == 'binary_classification':
+            pass
+        elif self.model_objective == 'regression':
+            pass
+
+    def plot_feature_drift(self, feature_name, min_cat_weight: float = 0.01):
         if self.feature_names is None:
             raise ValueError('You must call the fit method before ploting drift')
         if feature_name not in self.feature_names:
             raise ValueError(f'{feature_name} not present in the feature_names list')
-        if feature_name in self.cat_features:
+        elif feature_name in self.cat_features:
             plot_drift_cat(self.X1[feature_name].values, self.X2[feature_name].values, self.sample_weights1,
-                           self.sample_weights2, title=feature_name)
+                           self.sample_weights2, title=feature_name, min_cat_weight=min_cat_weight)
         else:
             plot_drift_num(self.X1[feature_name].values, self.X2[feature_name].values, self.sample_weights1,
                            self.sample_weights2, title=feature_name)
 
-    def generate_html_report(self, path):
+    def generate_html_report(self, path, min_cat_weight: float = 0.01):
         if self.prediction_drift is None:
             raise ValueError('You must call the fit method before generating the drift report')
-        with open('drift_explainer.pkl', 'wb') as f:
-            pkl.dump(self, f)
-        weave('src/report/drift_report_template.pmd', # on part de l'endroit où le code est exécuter donc dans le notebook
+        with open('report_data.pkl', 'wb') as f:
+            pkl.dump({'drift_explainer': self, 'min_cat_weight': min_cat_weight}, f)
+        data = pkgutil.get_data(__name__, '/report/drift_report_template.pmd')
+        import tempfile
+        with tempfile.NamedTemporaryFile('w') as fp:
+            fp.write(data.decode('utf-8'))
+            weave(fp.name, informat='markdown', # on part de l'endroit où le code est exécuter donc dans le notebook
+                  output=path)
+
+        #with open('template.pmd', 'w') as f:
+        #    f.write(data.decode('utf-8'))
+        #print(data)
+        #print(type(data))
+        #print(data.decode('utf-8'))
+        #print(type(data.decode('utf-8')))
+        weave('template.pmd',  # on part de l'endroit où le code est exécuter donc dans le notebook
               output=path)
+
+        #weave('src/report/drift_report_template.pmd', # on part de l'endroit où le code est exécuter donc dans le notebook
+        #      output=path)
 
     def update(self, new_X):
         """usually new_X would update X2: the production X"""

@@ -6,8 +6,10 @@
 import matplotlib.pyplot as plt
 import pickle as pkl
 
-with open('drift_explainer.pkl', 'rb') as f:
-    drift_explainer = pkl.load(f)
+with open('report_data.pkl', 'rb') as f:
+    report_data = pkl.load(f)
+    drift_explainer = report_data['drift_explainer']
+    min_cat_weight = report_data['min_cat_weight']
 
 # const
 n_feature_contribs = 10
@@ -19,7 +21,7 @@ n_feature_contribs = 10
 if drift_explainer.y1 is None or drift_explainer.y2 is None:
     print('"y1" or "y2" argument was not passed to drift_explainer.fit method')
 else:
-    drift_explainer.plot_target_drift()
+    drift_explainer.plot_target_drift(min_cat_weight)
 ```
 
 ```python, echo=False, evaluate=True, name='Drift of the ground truth target'
@@ -63,9 +65,9 @@ drift_explainer.plot_feature_contribs(n=n_feature_contribs)
 
 ```python, echo=False, evaluate=True, name='Drift of the ground truth target'
 for i, feature_name in enumerate(drift_explainer.feature_names):
-    drift_explainer.plot_feature_drift(feature_name)
-    if i > 0:
-        print(f'Feature: {feature_name}\n')
+    drift_explainer.plot_feature_drift(feature_name, min_cat_weight)
+    if i > 0: print('')
+    print(f'Feature: {feature_name}')
     if feature_name in drift_explainer.cat_features:
           print(f"Wasserstein distance for cat: {drift_explainer.feature_drifts[i]['wasserstein']}")
           print(f"Chi2 test: {drift_explainer.feature_drifts[i]['chi2_test']}")
