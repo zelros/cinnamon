@@ -21,16 +21,17 @@ class CatBoostParser: # differentiate regressor and classifier ?
         self.feature_names = cb_model.feature_names_
         self.cat_features = [self.feature_names[i] for i in self.cb_model.get_cat_feature_indices()]
         self.n_features = len(self.feature_names)
-        self.trees = self.get_trees()
+        self.trees = self._get_trees(self.json_cb_model, self.num_trees)
         self.class_names = cb_model.classes_.tolist()
         self.model_objective = self._get_model_objective() # can I do without it ? it may cause bugs?..
 
-    def get_trees(self):
+    @staticmethod
+    def _get_trees(json_cb_model, num_trees):
         # load all trees
         trees = []
-        for tree_index in range(self.num_trees):
+        for tree_index in range(num_trees):
             # leaf weights
-            leaf_weights = self.json_cb_model['oblivious_trees'][tree_index]['leaf_weights']
+            leaf_weights = json_cb_model['oblivious_trees'][tree_index]['leaf_weights']
             # re-compute the number of samples that pass through each node
             leaf_weights_unraveled = [0] * (len(leaf_weights) - 1) + leaf_weights
             leaf_weights_unraveled[0] = sum(leaf_weights)
@@ -40,7 +41,7 @@ class CatBoostParser: # differentiate regressor and classifier ?
             # leaf values
             # leaf values = log odd if binary classification
             # leaf values = log softmax if multiclass classification
-            leaf_values = self.json_cb_model['oblivious_trees'][tree_index]['leaf_values']
+            leaf_values = json_cb_model['oblivious_trees'][tree_index]['leaf_values']
             n_class = int(len(leaf_values) / len(leaf_weights))
             # re-compute leaf values within each node
             leaf_values_unraveled = np.concatenate((np.zeros((len(leaf_weights) - 1, n_class)),
@@ -67,7 +68,7 @@ class CatBoostParser: # differentiate regressor and classifier ?
             # split features and borders go from leafs to the root
             split_features_index = []
             borders = []
-            for elem in self.json_cb_model['oblivious_trees'][tree_index]['splits']:
+            for elem in json_cb_model['oblivious_trees'][tree_index]['splits']:
                 split_type = elem.get('split_type')
                 if split_type == 'FloatFeature':
                     split_feature_index = elem.get('float_feature_index')
@@ -128,11 +129,14 @@ class CatBoostParser: # differentiate regressor and classifier ?
             node_weights.append(np.array(node_weights_in_tree, dtype=np.int32))
         return node_weights
 
-    def get_predictions(self, X: pd.DataFrame) -> np.array:
+    def get_predictions(self, X: pd.DataFrame, prediction_type: str) -> np.array:
         # array of shape (nb. obs, nb. class) for multiclass and shape array of shape (nb. obs, )
         # for binary class and regression
         pool = catboost.Pool(X, cat_features=[self.feature_names[i] for i in self.cb_model.get_cat_feature_indices()])
-        return  self.cb_model.predict(pool, prediction_type='RawFormulaVal')
+        if prediction_type == 'log_softmax':
+            return self.cb_model.predict(pool, prediction_type='RawFormulaVal')
+        else:  # proba
+            return self.cb_model.predict_proba(pool)
 
     def _get_model_objective(self):
         if self.json_cb_model['model_info']['params']['loss_function']['type'] in ['MultiClass']:

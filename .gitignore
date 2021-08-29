@@ -10,3 +10,4 @@ dev.ipynb
 figures/
 *.html
 *.pkl
+src/__pycache__/

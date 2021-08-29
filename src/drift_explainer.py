@@ -4,7 +4,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import pickle as pkl
 from pweave import weave
-from os import path
 import pkgutil
 
 from scipy.stats import wasserstein_distance, ks_2samp
@@ -83,7 +82,11 @@ class DriftExplainer:
 
     logger = logging.getLogger('DriftExplainer')
 
-    def __init__(self):
+    def __init__(self, prediction_type='proba'):
+        """
+
+        :param prediction_type: 'proba' is default. Other is log_softmax
+        """
         #self.parsed_model = None
         #self.node_weights1 = None
         #self.node_weights2 = None
@@ -97,6 +100,7 @@ class DriftExplainer:
         self.predictions1 = None
         self.predictions2 = None
         self.model_objective = None
+        self.prediction_type = prediction_type
         #self.cat_feature_distribs = None
 
         # usefull for the report when I export the dataset (may not be usefull if I stock only the necessary info
@@ -132,8 +136,10 @@ class DriftExplainer:
         self.model_objective = self.parsed_model.model_objective
 
         # Compute predictions
-        self.predictions1 = self.parsed_model.get_predictions(X1[self.cat_features + self.num_features])
-        self.predictions2 = self.parsed_model.get_predictions(X2[self.cat_features + self.num_features])
+        self.predictions1 = self.parsed_model.get_predictions(X1[self.cat_features + self.num_features],
+                                                              prediction_type=self.prediction_type)
+        self.predictions2 = self.parsed_model.get_predictions(X2[self.cat_features + self.num_features],
+                                                              prediction_type=self.prediction_type)
 
         # Drift of the distribution of predictions
         self.prediction_drift = self._compute_prediction_drift(self.predictions1, self.predictions2,
