@@ -7,3 +7,6 @@ models/
 data/
 .DS_Store
 dev.ipynb
+figures/
+*.html
+*.pkl

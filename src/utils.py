@@ -48,6 +48,15 @@ def compute_distribution_cat(a1: np.array, a2: np.array, sample_weights1=None, s
     return distrib
 
 
+def compute_mean_diff(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
+    if sample_weights1 is None:
+        sample_weights1 = np.ones_like(a1)
+    if sample_weights2 is None:
+        sample_weights2 = np.ones_like(a2)
+        mean1 = np.sum(a1 * sample_weights1) / np.sum(sample_weights1)
+        mean2 = np.sum(a2 * sample_weights2) / np.sum(sample_weights2)
+    return mean2 - mean1
+
 def wasserstein_distance_for_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
     # this correspond to wasserstein distance where we assume a distance 1 between two categories of the feature
     distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2)

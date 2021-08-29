@@ -9,7 +9,7 @@ import pkgutil
 
 from scipy.stats import wasserstein_distance, ks_2samp
 from .tree_ensemble import CatBoostParser
-from .utils import wasserstein_distance_for_cat, chi2_test, compute_distribution_cat
+from .utils import wasserstein_distance_for_cat, chi2_test, compute_distribution_cat, compute_mean_diff
 
 
 logging.basicConfig(format='%(levelname)s:%(asctime)s - (%(pathname)s) %(message)s', level=logging.INFO)
@@ -20,7 +20,8 @@ def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_w
         kolmogorov_smirnov = ks_2samp(a1, a2)
     else:
         kolmogorov_smirnov = None
-    return {'wasserstein': wasserstein_distance(a1, a2, sample_weights1, sample_weights2),
+    return {'mean_diff': compute_mean_diff(a1, a2, sample_weights1, sample_weights2),
+            'wasserstein': wasserstein_distance(a1, a2, sample_weights1, sample_weights2),
             'kolmogorov_smirnov': kolmogorov_smirnov}
 
 
