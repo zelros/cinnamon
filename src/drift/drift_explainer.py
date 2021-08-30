@@ -2,14 +2,13 @@ import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import pickle as pkl
-from pweave import weave
-import pkgutil
-
 from scipy.stats import wasserstein_distance, ks_2samp
-from .tree_ensemble import TreeEnsembleParser, CatBoostParser
-from .utils import wasserstein_distance_for_cat, chi2_test, compute_distribution_cat, compute_mean_diff
 
+from .i_drift_explainer import IDriftExplainer
+from ..model_parser.catboost import CatBoostParser
+from ..model_parser.tree_ensemble import TreeEnsembleParser
+from .utils import wasserstein_distance_for_cat, compute_distribution_cat, compute_mean_diff
+from ..report.drift_report_generator import DriftReportGenerator
 
 logging.basicConfig(format='%(levelname)s:%(asctime)s - (%(pathname)s) %(message)s', level=logging.INFO)
 
@@ -78,7 +77,7 @@ def compute_distribution_num(a1: np.array, a2: np.array, sample_weights1=None, s
     pass
 
 
-class DriftExplainer:
+class DriftExplainer(IDriftExplainer):
 
     logger = logging.getLogger('DriftExplainer')
 
@@ -286,29 +285,10 @@ class DriftExplainer:
             plot_drift_num(self.X1[feature_name].values, self.X2[feature_name].values, self.sample_weights1,
                            self.sample_weights2, title=feature_name)
 
-    def generate_html_report(self, path, min_cat_weight: float = 0.01):
+    def generate_html_report(self, output_path, min_cat_weight: float = 0.01):
         if self.prediction_drift is None:
             raise ValueError('You must call the fit method before generating the drift report')
-        with open('report_data.pkl', 'wb') as f:
-            pkl.dump({'drift_explainer': self, 'min_cat_weight': min_cat_weight}, f)
-        data = pkgutil.get_data(__name__, '/report/drift_report_template.pmd')
-        import tempfile
-        with tempfile.NamedTemporaryFile('w') as fp:
-            fp.write(data.decode('utf-8'))
-            weave(fp.name, informat='markdown', # on part de l'endroit où le code est exécuter donc dans le notebook
-                  output=path)
-
-        #with open('template.pmd', 'w') as f:
-        #    f.write(data.decode('utf-8'))
-        #print(data)
-        #print(type(data))
-        #print(data.decode('utf-8'))
-        #print(type(data.decode('utf-8')))
-        weave('template.pmd',  # on part de l'endroit où le code est exécuter donc dans le notebook
-              output=path)
-
-        #weave('src/report/drift_report_template.pmd', # on part de l'endroit où le code est exécuter donc dans le notebook
-        #      output=path)
+        DriftReportGenerator.generate(self, output_path, min_cat_weight)
 
     def update(self, new_X):
         """usually new_X would update X2: the production X"""
@@ -316,7 +296,7 @@ class DriftExplainer:
 
     def plot_feature_contribs(self, n: int = 10, type: str = 'mean_diff'):
         # a voir si je veux rendre cette fonction plus générique
-        if self.feature_contribs is None:
+        if self.parsed_model is None:
             raise ValueError('You need to run drift_explainer.fit before you can plot feature_contribs')
 
         feature_contribs = self._compute_feature_contribs(self.parsed_model, self.node_weights1,

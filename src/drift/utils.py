@@ -53,8 +53,8 @@ def compute_mean_diff(a1: np.array, a2: np.array, sample_weights1=None, sample_w
         sample_weights1 = np.ones_like(a1)
     if sample_weights2 is None:
         sample_weights2 = np.ones_like(a2)
-        mean1 = np.sum(a1 * sample_weights1) / np.sum(sample_weights1)
-        mean2 = np.sum(a2 * sample_weights2) / np.sum(sample_weights2)
+    mean1 = np.sum(a1 * sample_weights1) / np.sum(sample_weights1)
+    mean2 = np.sum(a2 * sample_weights2) / np.sum(sample_weights2)
     return mean2 - mean1
 
 

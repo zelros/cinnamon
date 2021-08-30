@@ -5,19 +5,7 @@ import json
 from .single_tree import BinaryTree
 import catboost
 import tempfile
-from abc import ABC
-
-
-class TreeEnsembleParser(ABC):
-    def __init__(self):
-        self.num_trees = None
-        self.max_depth = None
-        self.feature_names = None
-        self.cat_features = None
-        self.n_features = None
-        self.trees = None
-        self.class_names = None
-        self.model_objective = None
+from .tree_ensemble import TreeEnsembleParser
 
 
 class CatBoostParser(TreeEnsembleParser): # differentiate regressor and classifier ?
@@ -59,7 +47,7 @@ class CatBoostParser(TreeEnsembleParser): # differentiate regressor and classifi
             n_class = int(len(leaf_values) / len(leaf_weights))
             # re-compute leaf values within each node
             leaf_values_unraveled = np.concatenate((np.zeros((len(leaf_weights) - 1, n_class)),
-                                                   np.array(leaf_values).reshape(len(leaf_weights), n_class)), axis=0)
+                                                    np.array(leaf_values).reshape(len(leaf_weights), n_class)), axis=0)
             for index in range(len(leaf_weights) - 2, -1, -1):
                 if leaf_weights_unraveled[2 * index + 1] + leaf_weights_unraveled[2 * index + 2] == 0:
                     leaf_values_unraveled[index, :] = [-1] * n_class
