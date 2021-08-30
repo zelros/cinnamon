@@ -7,7 +7,7 @@ from pweave import weave
 import pkgutil
 
 from scipy.stats import wasserstein_distance, ks_2samp
-from .tree_ensemble import ModelParser, CatBoostParser
+from .tree_ensemble import TreeEnsembleParser, CatBoostParser
 from .utils import wasserstein_distance_for_cat, chi2_test, compute_distribution_cat, compute_mean_diff
 
 
@@ -224,7 +224,7 @@ class DriftExplainer:
         return self._compute_feature_contribs(self.parsed_model, self.node_weights1, self.node_weights2, type)
 
     @staticmethod
-    def _compute_feature_contribs(parsed_model: CatBoostParser, node_weights1, node_weights2, type: str):
+    def _compute_feature_contribs(parsed_model: TreeEnsembleParser, node_weights1, node_weights2, type: str):
         """
         :param parsed_model:
         :param node_weights1:
@@ -267,7 +267,14 @@ class DriftExplainer:
         elif self.model_objective == 'regression':
             pass
 
-    def plot_feature_drift(self, feature_name, min_cat_weight: float = 0.01):
+    def get_feature_drift(self, feature_name: str) -> dict:
+        if self.feature_names is None:
+            raise ValueError('You must call the fit method before ploting drift')
+        if feature_name not in self.feature_names:
+            raise ValueError(f'{feature_name} not present in the feature_names list')
+        return self.feature_drifts[self.feature_names.index(feature_name)]
+
+    def plot_feature_drift(self, feature_name: str, min_cat_weight: float = 0.01):
         if self.feature_names is None:
             raise ValueError('You must call the fit method before ploting drift')
         if feature_name not in self.feature_names:

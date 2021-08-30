@@ -4,11 +4,25 @@ import pandas as pd
 import json
 from .single_tree import BinaryTree
 import catboost
+import tempfile
+from abc import ABC
 
 
-class CatBoostParser: # differentiate regressor and classifier ?
+class TreeEnsembleParser(ABC):
+    def __init__(self):
+        self.num_trees = None
+        self.max_depth = None
+        self.feature_names = None
+        self.cat_features = None
+        self.n_features = None
+        self.trees = None
+        self.class_names = None
+        self.model_objective = None
+
+
+class CatBoostParser(TreeEnsembleParser): # differentiate regressor and classifier ?
     def __init__(self, cb_model):
-        import tempfile
+        super().__init__()
         self.cb_model = cb_model
         tmp_file = tempfile.NamedTemporaryFile()
         cb_model.save_model(tmp_file.name, format="json")
