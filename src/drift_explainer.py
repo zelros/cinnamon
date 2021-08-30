@@ -7,7 +7,7 @@ from pweave import weave
 import pkgutil
 
 from scipy.stats import wasserstein_distance, ks_2samp
-from .tree_ensemble import CatBoostParser
+from .tree_ensemble import ModelParser, CatBoostParser
 from .utils import wasserstein_distance_for_cat, chi2_test, compute_distribution_cat, compute_mean_diff
 
 
@@ -163,13 +163,6 @@ class DriftExplainer:
         # Explain prediction drift by decompose it in feature contributions
         DriftExplainer.logger.info('Compute feature contributions to the drift')
         #split_features_index_list = np.array([])
-        self.feature_contribs = np.zeros((self.parsed_model.n_features, len(self.parsed_model.class_names)))
-        for i, tree in enumerate(self.parsed_model.trees):
-            #split_features_index_list = np.concatenate((split_features_index_list, tree.split_features_index), axis=0)
-            feature_contribs_tree = tree.compute_feature_contribs(self.node_weights1[i],
-                                                                  self.node_weights2[i],
-                                                                  n_features=self.parsed_model.n_features)
-            self.feature_contribs += feature_contribs_tree
 
         # temporary
         self.X1 = X1
@@ -178,6 +171,12 @@ class DriftExplainer:
         self.sample_weights2 = sample_weights2
         self.y1 = y1
         self.y2 = y2
+
+    """
+    def get_prediction_drift(self, ):
+        ''' user interface '''
+        return self._compute_prediction_drift(self.predictions1)
+    """
 
     @staticmethod
     def _compute_prediction_drift(predictions1, predictions2, model_objective, class_names=None,
@@ -220,6 +219,27 @@ class DriftExplainer:
                 return compute_drift_num(y1, y2, sample_weights1, sample_weights2)
             else:
                 return None
+
+    def get_feature_contribs(self, type: str = 'mean_diff'):
+        return self._compute_feature_contribs(self.parsed_model, self.node_weights1, self.node_weights2, type)
+
+    @staticmethod
+    def _compute_feature_contribs(parsed_model: CatBoostParser, node_weights1, node_weights2, type: str):
+        """
+        :param parsed_model:
+        :param node_weights1:
+        :param node_weights2:
+        :param type: type: 'mean_diff', 'size_diff', or 'wasserstein'
+        :return:
+        """
+        feature_contribs = np.zeros((parsed_model.n_features, len(parsed_model.class_names)))
+        for i, tree in enumerate(parsed_model.trees):
+            feature_contribs_tree = tree.compute_feature_contribs(node_weights1[i],
+                                                                  node_weights2[i],
+                                                                  n_features=parsed_model.n_features,
+                                                                  type=type)
+            feature_contribs += feature_contribs_tree
+        return feature_contribs
 
     def plot_target_drift(self, min_cat_weight: float = 0.01):
         if self.y1 is None or self.y2 is None:
@@ -287,26 +307,32 @@ class DriftExplainer:
         """usually new_X would update X2: the production X"""
         pass
 
-    def plot_feature_contribs(self, n: int = 10):
+    def plot_feature_contribs(self, n: int = 10, type: str = 'mean_diff'):
         # a voir si je veux rendre cette fonction plus générique
         if self.feature_contribs is None:
             raise ValueError('You need to run drift_explainer.fit before you can plot feature_contribs')
 
-        feature_contribs = self.feature_contribs
+        feature_contribs = self._compute_feature_contribs(self.parsed_model, self.node_weights1,
+                                                          self.node_weights2, type=type)
         # sort by importance in terms of drift
         # sort in decreasing order according to sum of absolute values of feature_contribs
         order = np.abs(feature_contribs).sum(axis=1).argsort()[::-1].tolist()
         ordered_names = [self.feature_names[i] for i in order]
         ordered_feature_contribs = feature_contribs[order, :]
 
-        n_class = len(self.parsed_model.class_names)
+        if type == 'mean_diff':
+            n_class = len(self.parsed_model.class_names)
+            legend_labels = self.parsed_model.class_names
+        else:  # type == 'size_diff':
+            n_class = 1
+            legend_labels = []
 
         # plot
         fig, ax = plt.subplots(figsize=(10, 10))
         X = np.arange(n)
         for i in range(n_class):
             ax.barh(X + (n_class-i-1)/(n_class+1), ordered_feature_contribs[:n,i][::-1], height=1/(n_class+1))
-        ax.legend(self.parsed_model.class_names)
+        ax.legend(legend_labels)
         ax.set_yticks(X + 1/(n_class+1) * (n_class-1)/2)
         ax.set_yticklabels(ordered_names[:n][::-1])
         ax.set_xlabel('Contribution to data drift', fontsize=15)
