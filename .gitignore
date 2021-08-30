@@ -11,3 +11,5 @@ figures/
 *.html
 *.pkl
 src/__pycache__/
+data_drift_distance.ipynb
+run_report_generation.py
