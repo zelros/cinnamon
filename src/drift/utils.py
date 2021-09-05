@@ -1,32 +1,38 @@
 import numpy as np
 import pandas as pd
 from scipy.stats import chi2_contingency
+import sys
 
 
 def compute_distribution_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None,
-                             min_cat_weight: float = None):
+                             max_n_cat: int = None):
     if sample_weights1 is None:
         sample_weights1 = np.ones_like(a1)
     if sample_weights2 is None:
         sample_weights2 = np.ones_like(a2)
 
     # compute cat_map is needed
-    def _compute_cat_map(a: np.array, sample_weights: np.array, min_cat_weight: float):
+    def _compute_cat_map(a: np.array, sample_weights: np.array, max_n_cat: float):
+        # sort categories by size
         unique_cat = np.unique(a).tolist()
         total_weight = np.sum(sample_weights)
+        cat_weights = [np.sum(sample_weights[a == cat]) / total_weight for cat in unique_cat]
+        sorted_cat = [cat for _, cat in sorted(zip(cat_weights, unique_cat), reverse=True)]
+
+        # create category mapping to reducce number of categories
         cat_map = {}
-        for cat in unique_cat:
-            if np.sum(sample_weights[a == cat]) / total_weight < min_cat_weight:
-                cat_map[cat] = f'under_{min_cat_weight * 100}%_agg'
-            else:
+        for i, cat in enumerate(sorted_cat):
+            if i < (max_n_cat-1):
                 cat_map[cat] = cat
+            else:
+                cat_map[cat] = 'other_cat_agg'
         return cat_map
 
-    if min_cat_weight is not None:
+    if max_n_cat is not None:
         cat_map = _compute_cat_map(np.concatenate((a1, a2)), np.concatenate((sample_weights1, sample_weights2)),
-                                   min_cat_weight)
+                                   max_n_cat)
     else:
-        cat_map=None
+        cat_map = None
 
     # compute the distribution
     unique_cat1 = np.unique(a1).tolist()
@@ -82,3 +88,58 @@ def chi2_test(a: np.array, b: np.array):
             'p_value': p_value,
             'dof': dof,
             'contingency_table': contingency_table}
+
+
+def safe_isinstance(obj, class_path_str):
+    # this function is copy-paste from the code of the SHAP Python library
+    # Copyright (c) 2018 Scott Lundberg
+
+    """
+    Acts as a safe version of isinstance without having to explicitly
+    import packages which may not exist in the users environment.
+    Checks if obj is an instance of type specified by class_path_str.
+    Parameters
+    ----------
+    obj: Any
+        Some object you want to test against
+    class_path_str: str or list
+        A string or list of strings specifying full class paths
+        Example: `sklearn.ensemble.RandomForestRegressor`
+    Returns
+    --------
+    bool: True if isinstance is true and the package exists, False otherwise
+    """
+    if isinstance(class_path_str, str):
+        class_path_strs = [class_path_str]
+    elif isinstance(class_path_str, list) or isinstance(class_path_str, tuple):
+        class_path_strs = class_path_str
+    else:
+        class_path_strs = ['']
+
+    # try each module path in order
+    for class_path_str in class_path_strs:
+        if "." not in class_path_str:
+            raise ValueError("class_path_str must be a string or list of strings specifying a full \
+                module path to a class. Eg, 'sklearn.ensemble.RandomForestRegressor'")
+
+        # Splits on last occurence of "."
+        module_name, class_name = class_path_str.rsplit(".", 1)
+
+        # here we don't check further if the model is not imported, since we shouldn't have
+        # an object of that types passed to us if the model the type is from has never been
+        # imported. (and we don't want to import lots of new modules for no reason)
+        if module_name not in sys.modules:
+            continue
+
+        module = sys.modules[module_name]
+
+        #Get class
+        _class = getattr(module, class_name, None)
+
+        if _class is None:
+            continue
+
+        if isinstance(obj, _class):
+            return True
+
+    return False

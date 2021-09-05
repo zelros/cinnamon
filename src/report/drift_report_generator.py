@@ -9,9 +9,9 @@ import pkgutil
 class DriftReportGenerator(IReportGenerator):
 
     @staticmethod
-    def generate(drif_explainer: IDriftExplainer, output_path: str, min_cat_weight):
+    def generate(drif_explainer: IDriftExplainer, output_path: str, max_n_cat):
         with open('report_data.pkl', 'wb') as f:
-            pkl.dump({'drift_explainer': drif_explainer, 'min_cat_weight': min_cat_weight}, f)
+            pkl.dump({'drift_explainer': drif_explainer, 'max_n_cat': max_n_cat}, f)
         data = pkgutil.get_data(__name__, '/drift_report_template.pmd')
         import tempfile
         with tempfile.NamedTemporaryFile('w') as fp:

@@ -1,3 +1,6 @@
+# this code is inspired by the code of the SHAP Python library
+# Copyright (c) 2018 Scott Lundberg
+
 from typing import List
 import numpy as np
 import pandas as pd
@@ -5,33 +8,56 @@ import json
 from .single_tree import BinaryTree
 import catboost
 import tempfile
-from .tree_ensemble import TreeEnsembleParser
+from .i_tree_ensemble import ITreeEnsembleParser
 
 
-class CatBoostParser(TreeEnsembleParser): # differentiate regressor and classifier ?
-    def __init__(self, cb_model):
+class CatBoostParser(ITreeEnsembleParser):
+    objective_task_map = {'RMSE': 'regression',
+
+                          'Logloss':'binary_classification',
+                          'CrossEntropy': 'binary_classification',  # TODO: make sure it predicts logits
+                          'MultiClass': 'multiclass_classification',
+                          }
+
+    ''' TODO: not supported objectives
+    multiclass: MultiClassOneVsAll (one tree per booster ? predict logsoftmax ?)
+    regression:
+    ranking: no objective is supported
+    '''
+    not_supported_objective = {}
+
+    def __init__(self, model_type: str):
         super().__init__()
-        self.cb_model = cb_model
+        self.feature_names = None  # specific to catboost
+        self.class_names = None  # specific to catboost
+
+    def parse(self, model):
+        self.original_model = model
         tmp_file = tempfile.NamedTemporaryFile()
-        cb_model.save_model(tmp_file.name, format="json")
+        self.original_model.save_model(tmp_file.name, format="json")
         self.json_cb_model = json.load(open(tmp_file.name, "r"))
         tmp_file.close()
 
         # load the CatBoost oblivious trees specific parameters
-        self.num_trees = len(self.json_cb_model['oblivious_trees'])
+        self.model_objective = self.json_cb_model['model_info']['params']['loss_function']['type']
+        self.n_trees = len(self.json_cb_model['oblivious_trees'])
         self.max_depth = self.json_cb_model['model_info']['params']['tree_learner_options']['depth']
-        self.feature_names = cb_model.feature_names_
-        self.cat_features = [self.feature_names[i] for i in self.cb_model.get_cat_feature_indices()]
+        self.cat_feature_indices = self.original_model.get_cat_feature_indices()
+        self.feature_names = self.original_model.feature_names_
         self.n_features = len(self.feature_names)
-        self.trees = self._get_trees(self.json_cb_model, self.num_trees)
-        self.class_names = cb_model.classes_.tolist()
-        self.model_objective = self._get_model_objective() # can I do without it ? it may cause bugs?..
+        self.trees = self._get_trees(self.json_cb_model, self.n_trees)
+        self.class_names = self.original_model.classes_.tolist()
+        self.prediction_dim = len(self.class_names)
+        if self.model_objective not in self.objective_task_map:
+            raise ValueError(f"{self.model_objective} model objective for CatBoost is not supported")
+        else:
+            self.model_task = self.objective_task_map[self.model_objective]
 
     @staticmethod
-    def _get_trees(json_cb_model, num_trees):
+    def _get_trees(json_cb_model, n_trees):
         # load all trees
         trees = []
-        for tree_index in range(num_trees):
+        for tree_index in range(n_trees):
             # leaf weights
             leaf_weights = json_cb_model['oblivious_trees'][tree_index]['leaf_weights']
             # re-compute the number of samples that pass through each node
@@ -110,12 +136,12 @@ class CatBoostParser(TreeEnsembleParser): # differentiate regressor and classifi
             sample_weights = np.ones(len(X))
 
         # transform X into catboost.Pool
-        pool = catboost.Pool(X, cat_features=[self.feature_names[i] for i in self.cb_model.get_cat_feature_indices()])
+        pool = catboost.Pool(X, cat_features=[self.feature_names[i] for i in self.original_model.get_cat_feature_indices()])
 
         """pass X through the trees : compute node sample weights, and node values fro each tree"""
-        leaf_indexes = self.cb_model.calc_leaf_indexes(pool) # voir si catboost.Pool ou bien dataframe etc.
+        leaf_indexes = self.original_model.calc_leaf_indexes(pool) # voir si catboost.Pool ou bien dataframe etc.
         node_weights = []
-        for index in range(self.num_trees):
+        for index in range(self.n_trees):
             tree = self.trees[index]
 
             # compute sample weighs in leaves
@@ -134,12 +160,9 @@ class CatBoostParser(TreeEnsembleParser): # differentiate regressor and classifi
     def get_predictions(self, X: pd.DataFrame, prediction_type: str) -> np.array:
         # array of shape (nb. obs, nb. class) for multiclass and shape array of shape (nb. obs, )
         # for binary class and regression
-        pool = catboost.Pool(X, cat_features=[self.feature_names[i] for i in self.cb_model.get_cat_feature_indices()])
+        pool = catboost.Pool(X, cat_features=[self.feature_names[i] for i in self.original_model.get_cat_feature_indices()])
         if prediction_type == 'log_softmax':
-            return self.cb_model.predict(pool, prediction_type='RawFormulaVal')
+            return self.original_model.predict(pool, prediction_type='RawFormulaVal')
         else:  # proba
-            return self.cb_model.predict_proba(pool)
+            return self.original_model.predict_proba(pool)
 
-    def _get_model_objective(self):
-        if self.json_cb_model['model_info']['params']['loss_function']['type'] in ['MultiClass']:
-            return 'multiclass_classification'
