@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import wasserstein_distance, ks_2samp
+from typing import List, Tuple
 
 from .i_drift_explainer import IDriftExplainer
 from ..model_parser.i_tree_ensemble import ITreeEnsembleParser
@@ -83,26 +84,24 @@ class DriftExplainer(IDriftExplainer):
 
     logger = logging.getLogger('DriftExplainer')
 
-    def __init__(self, prediction_type='proba'):
-        """
-
-        :param prediction_type: 'proba' is default. Other is raw
-        """
+    def __init__(self):
         self.model_parser = None
-        #self.node_weights1 = None
-        #self.node_weights2 = None
+        self.node_weights1 = None
+        self.node_weights2 = None
         self.feature_drifts = None
         self.target_drift = None
-        self.prediction_drift = None
-        self.feature_contribs = None
+        #self.prediction_drift = None
+        #self.feature_contribs = None
         self.feature_names = None
         self.class_names = None
         self.cat_feature_indices = None  # indexes of categorical_features
         self.n_features = None
+        self.prediction_dim = None
         self.predictions1 = None
         self.predictions2 = None
-        self.model_task = None
-        self.prediction_type = prediction_type
+        self.pred_proba1 = None
+        self.pred_proba2 = None
+        self.task = None
         #self.cat_feature_distribs = None
 
         # usefull for the report when I export the dataset (may not be usefull if I stock only the necessary info
@@ -115,7 +114,8 @@ class DriftExplainer(IDriftExplainer):
         self.y2 = None # same
 
     def fit(self, model, X1: pd.DataFrame, X2: pd.DataFrame, y1: np.array=None, y2: np.array= None,
-            sample_weights1: np.array = None, sample_weights2: np.array = None):
+            sample_weights1: np.array = None, sample_weights2: np.array = None,
+            iteration_range: Tuple[int,int] = None):
         """
         Compute drift coefficients by feature. For algebraic drift, we do X2 - X1
         :param model: the (tree based) model we want to analyze the drift on. In binary format.
@@ -123,48 +123,51 @@ class DriftExplainer(IDriftExplainer):
         :param X2: the X which is compared with X1 (usually the test X of production X)
         :return:
         """
+
+        # Check arguments pasted to the fit method
         if (sample_weights1 is not None and np.any(sample_weights1 < 0)) or (sample_weights2 is not None and
                                                                              np.any(sample_weights2 < 0)):
             raise ValueError("Elements in sample_weights must be non negative")
         if (sample_weights1 is not None and np.sum(sample_weights1) == 0) or (sample_weights2 is not None and
                                                                               np.sum(sample_weights2) == 0):
             raise ValueError("The sum of sample_weights must be positive")
-
-        DriftExplainer.logger.info('Step 1 - Parse model')
-        self._parse_model(model)
         if X2.shape[1] != X1.shape[1]:
             raise ValueError('X1 and X2 do not have the same number of columns')
+
+        # Parse model
+        DriftExplainer.logger.info('Step 1 - Parse model')
+        self.iteration_range = iteration_range
+        self._parse_model(model, self.iteration_range)
+        self.task = self.model_parser.task
         if self.model_parser.n_features != X1.shape[1]:
             raise ValueError('Number of columns in X1 (X2) not equal to the number of features required for "model"')
+
+        # Set some class attributes
         self.n_features = self.model_parser.n_features
         self.feature_names = self._get_feature_names(X1, X2, self.model_parser)
         self.cat_feature_indices = self._get_cat_feature_indices(self.model_parser)
-        self.class_names = self._get_class_names(self.model_task, self.model_parser)
+        self.class_names = self._get_class_names(self.task, self.model_parser)
+        self.prediction_dim = self.model_parser.prediction_dim
 
         # Compute predictions
-        self.predictions1 = self.model_parser.get_predictions(X1, prediction_type=self.prediction_type)
-        self.predictions2 = self.model_parser.get_predictions(X2, prediction_type=self.prediction_type)
-
-        # Drift of the distribution of predictions
-        self.prediction_drift = self._compute_prediction_drift(self.predictions1, self.predictions2,
-                                                               self.model_task,
-                                                               sample_weights1, sample_weights2)
-
-        # Drift of each feature of the model
-        self.feature_drifts = self._compute_feature_drifts(X1, X2, self.n_features, self.cat_feature_indices,
-                                                           sample_weights1, sample_weights2)
-
-        # Drift of the target ground truth labels
-        self.target_drift = self._compute_target_drift(y1, y2, self.model_task, sample_weights1, sample_weights2)
+        self.predictions1 = self.model_parser.get_predictions(X1, prediction_type="raw")
+        self.predictions2 = self.model_parser.get_predictions(X2, prediction_type="raw")
+        if self.task == "classification":
+            self.pred_proba1 = self.model_parser.get_predictions(X1, prediction_type="proba")
+            self.pred_proba2 = self.model_parser.get_predictions(X2, prediction_type="proba")
 
         # Compute node weights: weighted sum of observations in each node
         DriftExplainer.logger.info('Step 2 - Pass datasets through the model trees')
         self.node_weights1 = self.model_parser.get_node_weights(X1, sample_weights=sample_weights1)
         self.node_weights2 = self.model_parser.get_node_weights(X2, sample_weights=sample_weights2)
 
-        # Explain prediction drift by decompose it in feature contributions
-        DriftExplainer.logger.info('Compute feature contributions to the drift')
-        #split_features_index_list = np.array([])
+        # Drift of each feature of the model
+        self.feature_drifts = self._compute_feature_drifts(X1, X2, self.n_features, self.cat_feature_indices,
+                                                           sample_weights1, sample_weights2)
+
+        # Drift of the target ground truth labels
+        self.target_drift = self._compute_target_drift(y1, y2, self.task, sample_weights1, sample_weights2)
+
 
         # temporary
         self.X1 = X1
@@ -174,18 +177,22 @@ class DriftExplainer(IDriftExplainer):
         self.y1 = y1
         self.y2 = y2
 
-    """
-    def get_prediction_drift(self, ):
-        ''' user interface '''
-        return self._compute_prediction_drift(self.predictions1)
-    """
+    def get_prediction_drift(self, prediction_type="raw"):
+        if prediction_type not in ['raw', 'proba']:
+            ValueError(f'Bad value for prediction_type: {prediction_type}')
+        if prediction_type == 'raw':
+            return self._compute_prediction_drift(self.predictions1, self.predictions2, self.task, self.prediction_dim,
+                                                  self.sample_weights1, self.sample_weights2)
+        elif prediction_type == 'proba':
+            return self._compute_prediction_drift(self.pred_proba1, self.pred_proba2, self.task, self.prediction_dim,
+                                                  self.sample_weights1, self.sample_weights2)
 
     @staticmethod
-    def _compute_prediction_drift(predictions1, predictions2, task, sample_weights1=None, sample_weights2=None):
+    def _compute_prediction_drift(predictions1, predictions2, task, prediction_dim, sample_weights1=None, sample_weights2=None):
         DriftExplainer.logger.info('Evaluate prediction drift')
         prediction_drift = []
         if task == 'classification':
-            if np.ndim(predictions1) == 1:  # binary classif
+            if prediction_dim == 1:  # binary classif
                 prediction_drift.append(compute_drift_num(predictions1, predictions2, sample_weights1, sample_weights2))
             else:  # multiclass classif
                 for i in range(predictions1.shape[1]):
@@ -210,6 +217,9 @@ class DriftExplainer(IDriftExplainer):
             feature_drifts.append(feature_drift)
         return feature_drifts
 
+    def get_target_drift(self):
+        return self.target_drift
+
     @staticmethod
     def _compute_target_drift(y1, y2, task, sample_weights1, sample_weights2):
         if y1 is not None and y2 is not None:
@@ -219,7 +229,7 @@ class DriftExplainer(IDriftExplainer):
             elif task in ['regression', 'ranking']:
                 return compute_drift_num(y1, y2, sample_weights1, sample_weights2)
 
-    def get_feature_contribs(self, type: str = 'mean_diff'):
+    def get_feature_contribs(self, type: str = 'size_diff'):
         return self._compute_feature_contribs(self.model_parser, self.node_weights1, self.node_weights2, type)
 
     @staticmethod
@@ -231,7 +241,14 @@ class DriftExplainer(IDriftExplainer):
         :param type: type: 'mean_diff', 'size_diff', or 'wasserstein'
         :return:
         """
-        feature_contribs = np.zeros((model_parser.n_features, model_parser.prediction_dim))
+        if type not in ['size_diff', 'mean_diff']:
+            ValueError(f'Bad value for "type": {type}')
+
+        if type == 'size_diff':
+            feature_contribs = np.zeros((model_parser.n_features, 1))
+        else:  # 'mean_diff'
+            feature_contribs = np.zeros((model_parser.n_features, model_parser.prediction_dim))
+
         for i, tree in enumerate(model_parser.trees):
             feature_contribs_tree = tree.compute_feature_contribs(node_weights1[i],
                                                                   node_weights2[i],
@@ -243,28 +260,28 @@ class DriftExplainer(IDriftExplainer):
     def plot_target_drift(self, max_n_cat: int = 20):
         if self.y1 is None or self.y2 is None:
             raise ValueError('"y1" or "y2" argument was not passed to drift_explainer.fit method')
-        if self.model_task == 'multiclass_classification':
+        if self.task == 'classification':
             plot_drift_cat(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
                            max_n_cat=max_n_cat)
-        elif self.model_task == 'binary_classification':
-            pass
-        elif self.model_task == 'regression':
-            pass
+        elif self.task == 'regression':
+            plot_drift_num(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target')
 
-    def plot_prediction_drift(self):
+    def plot_prediction_drift(self, prediction_type='raw'):
         if self.predictions1 is None:
             raise ValueError('You must call the fit method before ploting drift')
-        if self.model_task == 'multiclass_classification':
-            for i, label in enumerate(self.model_parser.prediction_dim):
-                plt.hist(self.predictions1[:, i], bins=100, density=True, alpha=0.3)
-                plt.hist(self.predictions2[:, i], bins=100, density=True, alpha=0.3)
-                plt.title(f'{label}')
-                plt.legend(['dataset1', 'dataset2'])
-                plt.show()
-        elif self.model_task == 'binary_classification':
-            pass
-        elif self.model_task == 'regression':
-            pass
+        if prediction_type not in ['raw', 'proba']:
+            ValueError(f'Bad value for prediction_type: {prediction_type}')
+        if prediction_type == 'raw':
+            pred1, pred2 = self.predictions1, self.predictions2
+        else:
+            pred1, pred2 = self.pred_proba1, self.pred_proba2
+
+        if self.task == 'classification' and self.model_parser.prediction_dim > 1:  # multiclass classif
+            for i in range(self.model_parser.prediction_dim):
+                plot_drift_num(pred1[:, i], pred2[:, i], self.sample_weights1, self.sample_weights2,
+                               title=f'{self.class_names[i]}')
+        else:  # binary classif or regression
+            plot_drift_num(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions')
 
     def get_feature_drift(self, feature) -> dict:
         if self.X1 is None:
@@ -272,15 +289,18 @@ class DriftExplainer(IDriftExplainer):
         feature_index, feature_name = self._check_feature_param(feature, self.feature_names)
         return self.feature_drifts[feature_index]
 
+    def get_feature_drifts(self) -> List[dict]:
+        return self.feature_drifts
+
     def plot_feature_drift(self, feature, max_n_cat: int = 20):
         if self.X1 is None:
             raise ValueError('You must call the fit method before calling "get_feature_drift"')
         feature_index, feature_name = self._check_feature_param(feature, self.feature_names)
         if feature_index in self.cat_feature_indices:
-            plot_drift_cat(self.X1.loc[:,feature_index].values, self.X2.loc[:,feature_index].values,
+            plot_drift_cat(self.X1.iloc[:,feature_index].values, self.X2.iloc[:,feature_index].values,
                            self.sample_weights1, self.sample_weights2, title=feature_name, max_n_cat=max_n_cat)
         else:
-            plot_drift_num(self.X1.loc[:,feature_index].values, self.X2.loc[:,feature_index].values,
+            plot_drift_num(self.X1.iloc[:,feature_index].values, self.X2.iloc[:,feature_index].values,
                            self.sample_weights1, self.sample_weights2, title=feature_name)
 
     @staticmethod
@@ -293,23 +313,27 @@ class DriftExplainer(IDriftExplainer):
             else:
                 return feature_names.index(feature), feature
         elif isinstance(feature, int):
-            return feature, f'feature {feature}'
+            if feature_names is None:
+                return feature, f'feature {feature}'
+            else:
+                return feature, feature_names[feature]
         else:
             raise ValueError(f'{feature} should be either of type str or int')
 
     def generate_html_report(self, output_path, max_n_cat: int = 20):
-        if self.prediction_drift is None:
-            raise ValueError('You must call the fit method before generating the drift report')
+        # TODO : not ready
         DriftReportGenerator.generate(self, output_path, max_n_cat)
 
     def update(self, new_X):
         """usually new_X would update X2: the production X"""
         pass
 
-    def plot_feature_contribs(self, n: int = 10, type: str = 'mean_diff'):
+    def plot_feature_contribs(self, n: int = 10, type: str = 'size_diff'):
         # a voir si je veux rendre cette fonction plus générique
         if self.model_parser is None:
             raise ValueError('You need to run drift_explainer.fit before you can plot feature_contribs')
+        # if n > n_features set n = n_features
+        n = min(n, self.n_features)
 
         feature_contribs = self._compute_feature_contribs(self.model_parser, self.node_weights1,
                                                           self.node_weights2, type=type)
@@ -322,21 +346,20 @@ class DriftExplainer(IDriftExplainer):
             ordered_names = [f'feature {i}' for i in order]
         ordered_feature_contribs = feature_contribs[order, :]
 
+        # there is a legend only in the case of multiclass classif (with type == 'mean_diff')
         if type == 'mean_diff' and self.model_parser.prediction_dim > 1:
             n_dim = self.model_parser.prediction_dim
-            if self.class_names is not None:
-                legend_labels = self.class_names
-            else:
-                legend_labels = list(range(n_dim))
-        else:  # type == 'size_diff':
+            legend_labels = self.class_names
+        else:
             n_dim = 1
             legend_labels = []
 
         # plot
         fig, ax = plt.subplots(figsize=(10, 10))
+
         X = np.arange(n)
         for i in range(n_dim):
-            ax.barh(X + (n_dim-i-1)/(n_dim+1), ordered_feature_contribs[:n,i][::-1], height=1/(n_dim+1))
+            ax.barh(X + (n_dim-i-1)/(n_dim+1), ordered_feature_contribs[:n, i][::-1], height=1/(n_dim+1))
         ax.legend(legend_labels)
         ax.set_yticks(X + 1/(n_dim+1) * (n_dim-1)/2)
         ax.set_yticklabels(ordered_names[:n][::-1])
@@ -368,38 +391,35 @@ class DriftExplainer(IDriftExplainer):
             return []  # TODO: maybe add binary features to cat_feature_indices
 
     @staticmethod
-    def _get_class_names(task, model_parser: ITreeEnsembleParser):
+    def _get_class_names(task, model_parser: ITreeEnsembleParser) -> List[str]:
         if task == 'regression':
-            return None
+            return []
         elif model_parser.model_type == 'catboost.core.CatBoostClassifier':
             return model_parser.class_names
         else:
-            return [str(i) for i in range(model_parser.prediction_dim)]
+            n_class = 2 if model_parser.prediction_dim == 1 else model_parser.prediction_dim
+            return [str(i) for i in range(n_class)]
 
-    def _parse_model(self, model):
+    def _parse_model(self, model, iteration_range):
         if safe_isinstance(model, 'catboost.core.CatBoostClassifier'):
-            self.model_parser: ITreeEnsembleParser = CatBoostParser(model_type='catboost.core.CatBoostClassifier')
-            self.model_parser.parse(model)
-            self.task = "classification"
+            self.model_parser: ITreeEnsembleParser = CatBoostParser(model_type='catboost.core.CatBoostClassifier',
+                                                                    task='classification')
+            self.model_parser.parse(model, iteration_range)
         elif safe_isinstance(model, 'xgboost.core.Booster'):
             self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.core.Booster')
-            self.model_parser.parse(model)
-            self.task = self.model_parser.task
+            self.model_parser.parse(model, iteration_range)
         elif safe_isinstance(model, 'xgboost.sklearn.XGBClassifier'):
             self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.sklearn.XGBClassifier')
             # output of get_booster() is in binary format and universal among various XGBoost interfaces
-            self.model_parser.parse(model.get_booster())
-            self.task = 'classificaton'
+            self.model_parser.parse(model.get_booster(), iteration_range)
         elif safe_isinstance(model, "xgboost.sklearn.XGBRegressor"):
             self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.sklearn.XGBRegressor')
-            self.model_parser.parse(model.get_booster())
-            self.task = 'regression'
+            self.model_parser.parse(model.get_booster(), iteration_range)
         elif safe_isinstance(model, 'xgboost.sklearn.XGBRanker'):
             self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.sklearn.XGBRanker')
-            self.model_parser.parse(model.get_booster())
-            self.task = 'ranking'
+            self.model_parser.parse(model.get_booster(), iteration_range)
         else:
             raise TypeError(f'The type of model {type(model).__name__} is not supported in DriftExplainer')
-        if self.task == 'ranking':
+        if self.model_parser.task == 'ranking':
             DriftExplainer.logger.warning('A ranking model was passed to DriftExplainer. It will be treated similarly as'
                                           ' regression model but there is no warranty about the result')

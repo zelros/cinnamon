@@ -1,9 +1,6 @@
-# this code is inspired by the code of the SHAP Python library
-# Copyright (c) 2018 Scott Lundberg
-
-from typing import List
 import numpy as np
 import pandas as pd
+from typing import Tuple
 from .single_tree import BinaryTree
 import xgboost
 from .i_tree_ensemble import ITreeEnsembleParser
@@ -61,24 +58,23 @@ class XGBoostParser(ITreeEnsembleParser):
         super().__init__()
         self.model_type = model_type
 
-    def parse(self, model: xgboost.core.Booster):
+    def parse(self, model: xgboost.core.Booster, iteration_range: Tuple[int,int]):
         self.original_model = model
         parsed_info = self._parse_binary(self.original_model.save_raw().lstrip(b'binf'))
         if parsed_info['booster_type'] != 'gbtree':
             raise ValueError(f"{parsed_info['booster_type']} booster for XGBoost model is not supported")
         self.max_depth = parsed_info['max_depth']
         self.n_features = parsed_info['n_features']
-        self.n_trees = parsed_info['num_trees']
         self.model_objective = parsed_info['model_objective']
         self.prediction_dim = 1 if parsed_info['n_class'] == 0 else parsed_info['n_class']
         if self.model_objective in self.objective_task_map:
             self.task = self.objective_task_map[self.model_objective]
         else:
             raise ValueError(f"{self.model_objective} objective for XGBoost model is not supported")
-
-        self.trees = self._get_trees(parsed_info)
-
-        self.print_info(parsed_info)
+        self.iteration_range = self._get_iteration_range(iteration_range,
+                                                         parsed_info['num_trees'] // self.prediction_dim)
+        self.n_trees = self.iteration_range[1] - self.iteration_range[0]
+        self.trees = self._get_trees(parsed_info, self.iteration_range, self.n_trees)
 
     @staticmethod
     def _parse_binary(buf):
@@ -170,17 +166,15 @@ class XGBoostParser(ITreeEnsembleParser):
         return parsed_info
 
     @staticmethod
-    def _get_trees(parsed_info, n_trees_early_stopping=None):
-        # prune the model is early stoping was used during training
-        n_trees = n_trees_early_stopping if n_trees_early_stopping is not None else parsed_info['num_trees']
+    def _get_trees(parsed_info, iteration_range, n_trees):
 
-        shape = (n_trees, parsed_info['num_nodes'][:n_trees].max())
+        shape = (n_trees, parsed_info['num_nodes'][iteration_range[0]:iteration_range[1]].max())
         children_default = np.zeros(shape, dtype=np.int32)
         split_features_index = np.zeros(shape, dtype=np.int32)
         split_values = np.zeros(shape, dtype=np.float32)
         values = np.zeros((shape[0], shape[1], 1), dtype=np.float32)
         trees = []
-        for i in range(n_trees):
+        for i in range(iteration_range[0], iteration_range[1]):
             for j in range(parsed_info['num_nodes'][i]):
                 if np.right_shift(parsed_info['node_sindex'][i][j], np.uint32(31)) != 0:
                     children_default[i,j] = parsed_info['node_cleft'][i][j]
@@ -228,35 +222,12 @@ class XGBoostParser(ITreeEnsembleParser):
         print("num_output_group =", parsed_info['num_output_group'])
         print("size_leaf_vector =", parsed_info['size_leaf_vector'])
 
-    def get_node_weights(self, X: pd.DataFrame, sample_weights: np.array) -> List[np.array]:
-        """return sum of observation weights in each node of each tree of the model"""
+    def predict_leaf(self, X: pd.DataFrame):
+        return self.original_model.predict(xgboost.DMatrix(X), pred_leaf=True, iteration_range=self.iteration_range)
 
-        if sample_weights is None:
-            sample_weights = np.ones(len(X))
+    def predict_raw(self, X: pd.DataFrame):
+        return self.original_model.predict(xgboost.DMatrix(X), output_margin=True,
+                                           iteration_range=self.iteration_range)
 
-        # pass X through the trees : compute node sample weights, and node values fro each tree
-        leaf_indexes = self.original_model.predict(xgboost.DMatrix(X))
-        node_weights = []
-        for index in range(self.n_trees):
-            tree = self.trees[index]
-
-            # compute sample weighs in leaves
-            leaf_sample_weights_in_tree = [np.sum(sample_weights[leaf_indexes[:, index] == j], dtype=np.int32)
-                                           for j in range(tree.n_leaves)]
-
-            # add sample weights of nodes
-            node_weights_in_tree = [0] * (len(leaf_sample_weights_in_tree) - 1) + leaf_sample_weights_in_tree
-            for index in range(len(leaf_sample_weights_in_tree) - 2, -1, -1):
-                node_weights_in_tree[index] = node_weights_in_tree[2 * index + 1] + node_weights_in_tree[2 * index + 2]
-
-            # update node_weights
-            node_weights.append(np.array(node_weights_in_tree, dtype=np.int32))
-        return node_weights
-
-    def get_predictions(self, X: pd.DataFrame, prediction_type: str) -> np.array:
-        # array of shape (nb. obs, nb. class) for multiclass and shape array of shape (nb. obs, )
-        # for binary class and regression
-        if prediction_type == 'raw':
-            return self.original_model.predict(xgboost.DMatrix(X), output_margin=True)
-        else:  # proba
-            return self.original_model.predict(xgboost.DMatrix(X))
+    def predict_proba(self, X: pd.DataFrame):
+        return self.original_model.predict(xgboost.DMatrix(X), iteration_range=self.iteration_range)
