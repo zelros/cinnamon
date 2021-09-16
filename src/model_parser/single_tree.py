@@ -1,10 +1,11 @@
 import numpy as np
+from treelib import Node, Tree
 
 
 class BinaryTree:
     def __init__(self, children_left: np.array, children_right: np.array, children_default: np.array,
                  split_features_index: np.array, split_values: np.array,
-                 values: np.array, train_node_weights: np.array):
+                 values: np.array, train_node_weights: np.array, n_features: int):
         self.children_left = children_left
         self.children_right = children_right
         self.children_default = children_default
@@ -12,20 +13,29 @@ class BinaryTree:
         self.split_values = split_values
         self.values = values
         self.train_node_weights = train_node_weights  # does it really correspond to train samples ? (or train + valid ?) I think pbm with bootstrap also
+        self.n_features = n_features
         self.n_nodes = len(self.children_left)
 
-    def compute_feature_contribs(self, node_weights1: np.array, node_weights2: np.array,
-                                     n_features: int, type: str) -> np.array:
-        """
+    '''
+    def plot(self, node_weights, feature_names=None):
+        if feature_names is None:
+            feature_names = [f'{i}' for i in range(self.n_features)]
+        tree = Tree()
+        for i in range(self.n_nodes):
+            parent = self.children_left.index
+            tree.create_node(tag=, identifier=i, parent=)
+        pass
+    '''
 
+    def compute_feature_contribs(self, node_weights1: np.array, node_weights2: np.array, type: str) -> np.array:
+        """
         :param node_weights1:
         :param node_weights2: Usually correspond to train dataset
-        :param n_features:
         :return:
         """
         assert len(node_weights1) == len(node_weights2)
         split_contribs = self._compute_split_contribs(node_weights1, node_weights2, type)
-        feature_contribs = np.zeros((n_features, split_contribs.shape[1]))
+        feature_contribs = np.zeros((self.n_features, split_contribs.shape[1]))
         for feature_index, contribs in zip(self.split_features_index, split_contribs):
             feature_contribs[feature_index, :] += contribs
         return feature_contribs

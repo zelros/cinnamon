@@ -32,7 +32,7 @@ class CatBoostParser(ITreeEnsembleParser):
 
         self.iteration_range = self._get_iteration_range(iteration_range, len(self.json_cb_model['oblivious_trees']))
         self.n_trees = self.iteration_range[1] - self.iteration_range[0]  # corresponds to n trees after iteration_range
-        self.trees = self._get_trees(self.json_cb_model, self.iteration_range)
+        self.trees = self._get_trees(self.json_cb_model, self.iteration_range, self.original_model.n_features_in_)
 
         # load the CatBoost oblivious trees specific parameters
         self.model_objective = self.json_cb_model['model_info']['params']['loss_function']['type']
@@ -49,7 +49,7 @@ class CatBoostParser(ITreeEnsembleParser):
             self.prediction_dim = 1
 
     @staticmethod
-    def _get_trees(json_cb_model, iteration_range):
+    def _get_trees(json_cb_model, iteration_range, n_features):
         # load all trees
         trees = []
         for tree_index in range(iteration_range[0], iteration_range[1]):
@@ -119,6 +119,7 @@ class CatBoostParser(ITreeEnsembleParser):
                                     split_values=np.array(borders_unraveled),
                                     values=leaf_values_unraveled,
                                     train_node_weights=np.array(leaf_weights_unraveled),
+                                    n_features=n_features,
                                     ))
         return trees
 
