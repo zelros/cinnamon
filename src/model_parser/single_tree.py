@@ -16,16 +16,26 @@ class BinaryTree:
         self.n_features = n_features
         self.n_nodes = len(self.children_left)
 
-    '''
-    def plot(self, node_weights, feature_names=None):
+    def plot_drift(self, node_weights1, node_weights2, feature_names=None):
+        sample_weight_fractions1 = node_weights1 / node_weights1[0]
+        sample_weight_fractions2 = node_weights2 / node_weights2[0]
         if feature_names is None:
-            feature_names = [f'{i}' for i in range(self.n_features)]
+            feature_names = [f'f{i}' for i in range(self.n_features)]
         tree = Tree()
         for i in range(self.n_nodes):
-            parent = self.children_left.index
-            tree.create_node(tag=, identifier=i, parent=)
-        pass
-    '''
+            if i == 0:
+                parent = None
+            else:
+                parent = np.where(self.children_left == i)[0][0] if i in self.children_left \
+                    else np.where(self.children_right == i)[0][0]
+            if sample_weight_fractions1[i] != 0 or sample_weight_fractions2[i] != 0:
+                if self.children_left[i] == -1:
+                    tag = f'({round(sample_weight_fractions1[i], 3)}, {round(sample_weight_fractions2[i], 3)})'
+                else:
+                    tag = f'{feature_names[self.split_features_index[i]]} '\
+                          f'({round(sample_weight_fractions1[i], 3)}, {round(sample_weight_fractions2[i], 3)})'
+                tree.create_node(tag=tag, identifier=i, parent=parent)
+        tree.show()
 
     def compute_feature_contribs(self, node_weights1: np.array, node_weights2: np.array, type: str) -> np.array:
         """
