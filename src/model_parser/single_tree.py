@@ -16,7 +16,8 @@ class BinaryTree:
         self.n_features = n_features
         self.n_nodes = len(self.children_left)
 
-    def plot_drift(self, node_weights1, node_weights2, feature_names=None):
+    def plot_drift(self, node_weights1, node_weights2, type, feature_names=None):
+        split_contribs = self._compute_split_contribs(node_weights1, node_weights2, type)
         sample_weight_fractions1 = node_weights1 / node_weights1[0]
         sample_weight_fractions2 = node_weights2 / node_weights2[0]
         if feature_names is None:
@@ -33,7 +34,8 @@ class BinaryTree:
                     tag = f'({round(sample_weight_fractions1[i], 3)}, {round(sample_weight_fractions2[i], 3)})'
                 else:
                     tag = f'{feature_names[self.split_features_index[i]]} '\
-                          f'({round(sample_weight_fractions1[i], 3)}, {round(sample_weight_fractions2[i], 3)})'
+                          f'({round(sample_weight_fractions1[i], 3)}, {round(sample_weight_fractions2[i], 3)}) - ' \
+                          f'{[round(x, 3) for x in split_contribs[i, :]]}'
                 tree.create_node(tag=tag, identifier=i, parent=parent)
         tree.show()
 

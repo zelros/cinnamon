@@ -367,6 +367,17 @@ class DriftExplainer(IDriftExplainer):
         ax.set_xlabel('Contribution to data drift', fontsize=15)
         plt.show()
 
+    def plot_tree_drift(self, tree_idx: int, type: str = 'size_diff'):
+        if self.node_weights1 is None:
+            raise ValueError('You need to run drift_explainer.fit before calling plot_tree_drift')
+        if type not in ['size_diff', 'mean_diff']:
+            raise ValueError(f'Bad value for "type"')
+        else:
+            self.model_parser.trees[tree_idx].plot_drift(node_weights1=self.node_weights1[tree_idx],
+                                                         node_weights2=self.node_weights2[tree_idx],
+                                                         type=type,
+                                                         feature_names=self.feature_names)
+
     @staticmethod
     def _get_feature_names(X1, X2, model_parser: ITreeEnsembleParser):
         # we take feature names in X1 and X2 column names if provided
