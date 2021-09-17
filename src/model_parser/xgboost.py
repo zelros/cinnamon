@@ -196,7 +196,8 @@ class XGBoostParser(ITreeEnsembleParser):
                                     split_features_index=split_features_index[i,:l],
                                     split_values=split_values[i,:l],
                                     values=values[i,:l],
-                                    train_node_weights=parsed_info['sum_hess'][i]))
+                                    train_node_weights=parsed_info['sum_hess'][i],
+                                    n_features=parsed_info['n_features']))
         return trees
 
     @staticmethod

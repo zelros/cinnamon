@@ -249,13 +249,14 @@ class DriftExplainer(IDriftExplainer):
         else:  # 'mean_diff'
             feature_contribs = np.zeros((model_parser.n_features, model_parser.prediction_dim))
 
+        feature_contribs_details = []
         for i, tree in enumerate(model_parser.trees):
             feature_contribs_tree = tree.compute_feature_contribs(node_weights1[i],
                                                                   node_weights2[i],
-                                                                  n_features=model_parser.n_features,
                                                                   type=type)
             feature_contribs += feature_contribs_tree
-        return feature_contribs
+            feature_contribs_details.append(feature_contribs_tree)
+        return feature_contribs  #, feature_contribs_details
 
     def plot_target_drift(self, max_n_cat: int = 20):
         if self.y1 is None or self.y2 is None:

@@ -32,7 +32,7 @@ class CatBoostParser(ITreeEnsembleParser):
 
         self.iteration_range = self._get_iteration_range(iteration_range, len(self.json_cb_model['oblivious_trees']))
         self.n_trees = self.iteration_range[1] - self.iteration_range[0]  # corresponds to n trees after iteration_range
-        self.trees = self._get_trees(self.json_cb_model, self.iteration_range)
+        self.trees = self._get_trees(self.json_cb_model, self.iteration_range, self.original_model.n_features_in_)
 
         # load the CatBoost oblivious trees specific parameters
         self.model_objective = self.json_cb_model['model_info']['params']['loss_function']['type']
@@ -49,7 +49,7 @@ class CatBoostParser(ITreeEnsembleParser):
             self.prediction_dim = 1
 
     @staticmethod
-    def _get_trees(json_cb_model, iteration_range):
+    def _get_trees(json_cb_model, iteration_range, n_features):
         # load all trees
         trees = []
         for tree_index in range(iteration_range[0], iteration_range[1]):
@@ -93,22 +93,24 @@ class CatBoostParser(ITreeEnsembleParser):
             for elem in json_cb_model['oblivious_trees'][tree_index]['splits']:
                 split_type = elem.get('split_type')
                 if split_type == 'FloatFeature':
-                    split_features_index.append(elem.get('float_feature_index'))
+                    split_features_index.append(json_cb_model['features_info']['float_features'][elem.get('float_feature_index')]['flat_feature_index'])
                     borders.append(elem['border'])
                 elif split_type == 'OneHotFeature':
-                    split_features_index.append(elem.get('cat_feature_index'))
+                    split_features_index.append(json_cb_model['features_info']['categorical_features'][elem.get('cat_feature_index')]['flat_feature_index'])
                     borders.append(elem['value'])
-                else:
-                    split_features_index.append(elem.get('ctr_target_border_idx'))
+                else:  # ctrs
+                    # TODO: afraid of the 0 bellow there could be more than 1 element ?
+                    corresponding_cat_index = json_cb_model['features_info']['ctrs'][elem.get('ctr_target_border_idx')]['elements'][0]['cat_feature_index']
+                    split_features_index.append(json_cb_model['features_info']['categorical_features'][corresponding_cat_index]['flat_feature_index'])
                     borders.append(elem['border'])
 
             split_features_index_unraveled = []
-            for counter, feature_index in enumerate(split_features_index[::-1]):  # go from leafs to the root
+            for counter, feature_index in enumerate(split_features_index):  # go from leafs to the root
                 split_features_index_unraveled += [feature_index] * (2 ** counter)
             split_features_index_unraveled += [-1] * len(leaf_weights)
 
             borders_unraveled = []
-            for counter, border in enumerate(borders[::-1]):
+            for counter, border in enumerate(borders):
                 borders_unraveled += [border] * (2 ** counter)
             borders_unraveled += [-1] * len(leaf_weights)
 
@@ -119,6 +121,7 @@ class CatBoostParser(ITreeEnsembleParser):
                                     split_values=np.array(borders_unraveled),
                                     values=leaf_values_unraveled,
                                     train_node_weights=np.array(leaf_weights_unraveled),
+                                    n_features=n_features,
                                     ))
         return trees
 
