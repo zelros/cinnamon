@@ -16,6 +16,8 @@ class ITreeEnsembleParser:
         self.model_objective = None
         self.task = None
         self.iteration_range = None
+        self.n_iterations = None
+        self.base_score = None  # bias
 
         # specific to catboost
         self.class_names = None
@@ -103,3 +105,32 @@ class ITreeEnsembleParser:
     def _check_parsing(self, X):
         if not np.array_equal(self.predict_leaf_with_model_parser(X), self.predict_leaf(X)):
             self._model_parser_error()
+
+    def compute_feature_contribs(self, node_weights1, node_weights2, type: str):
+        """
+        :param node_weights1:
+        :param node_weights2:
+        :param type: type: 'mean_diff', 'size_diff', or 'wasserstein'
+        :return:
+        """
+        if type == 'size_diff':
+            feature_contribs = np.zeros((self.n_features, 1))
+        elif type in ['mean', 'mean_diff']:
+            feature_contribs = np.zeros((self.n_features, self.prediction_dim))
+        else:
+            raise ValueError(f'Bad value for "type": {type}')
+
+        feature_contribs_details = []
+        for i, tree in enumerate(self.trees):
+            feature_contribs_tree = tree.compute_feature_contribs(node_weights1[i], node_weights2[i], type=type)
+            feature_contribs = self.add_feature_contribs(feature_contribs, feature_contribs_tree, i,
+                                                         self.prediction_dim)
+            feature_contribs_details.append(feature_contribs_tree)
+        return feature_contribs  #, feature_contribs_details
+
+    # TODO: default behaviro for add_feature_contribs (should be put in Abtract class and only keep signature in
+    #  interface)
+    @staticmethod
+    def add_feature_contribs(feature_contribs, feature_contribs_tree, i, prediction_dim):
+        feature_contribs += feature_contribs_tree
+        return feature_contribs

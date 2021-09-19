@@ -230,33 +230,7 @@ class DriftExplainer(IDriftExplainer):
                 return compute_drift_num(y1, y2, sample_weights1, sample_weights2)
 
     def get_feature_contribs(self, type: str = 'size_diff'):
-        return self._compute_feature_contribs(self.model_parser, self.node_weights1, self.node_weights2, type)
-
-    @staticmethod
-    def _compute_feature_contribs(model_parser: ITreeEnsembleParser, node_weights1, node_weights2, type: str):
-        """
-        :param model_parser:
-        :param node_weights1:
-        :param node_weights2:
-        :param type: type: 'mean_diff', 'size_diff', or 'wasserstein'
-        :return:
-        """
-        if type not in ['size_diff', 'mean_diff']:
-            ValueError(f'Bad value for "type": {type}')
-
-        if type == 'size_diff':
-            feature_contribs = np.zeros((model_parser.n_features, 1))
-        else:  # 'mean_diff'
-            feature_contribs = np.zeros((model_parser.n_features, model_parser.prediction_dim))
-
-        feature_contribs_details = []
-        for i, tree in enumerate(model_parser.trees):
-            feature_contribs_tree = tree.compute_feature_contribs(node_weights1[i],
-                                                                  node_weights2[i],
-                                                                  type=type)
-            feature_contribs += feature_contribs_tree
-            feature_contribs_details.append(feature_contribs_tree)
-        return feature_contribs  #, feature_contribs_details
+        return self.model_parser.compute_feature_contribs(self.node_weights1, self.node_weights2, type)
 
     def plot_target_drift(self, max_n_cat: int = 20):
         if self.y1 is None or self.y2 is None:
@@ -336,8 +310,7 @@ class DriftExplainer(IDriftExplainer):
         # if n > n_features set n = n_features
         n = min(n, self.n_features)
 
-        feature_contribs = self._compute_feature_contribs(self.model_parser, self.node_weights1,
-                                                          self.node_weights2, type=type)
+        feature_contribs = self.model_parser.compute_feature_contribs(self.node_weights1, self.node_weights2, type=type)
         # sort by importance in terms of drift
         # sort in decreasing order according to sum of absolute values of feature_contribs
         order = np.abs(feature_contribs).sum(axis=1).argsort()[::-1].tolist()

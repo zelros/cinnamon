@@ -61,11 +61,10 @@ class XGBoostParser(ITreeEnsembleParser):
     def parse(self, model: xgboost.core.Booster, iteration_range: Tuple[int,int], X):
         self.original_model = model
         parsed_info = self._parse_binary(self.original_model.save_raw().lstrip(b'binf'))
-        if parsed_info['booster_type'] != 'gbtree':
-            raise ValueError(f"{parsed_info['booster_type']} booster for XGBoost model is not supported")
         self.max_depth = parsed_info['max_depth']
         self.n_features = parsed_info['n_features']
         self.model_objective = parsed_info['model_objective']
+        self.base_score = parsed_info['base_score']
         self.prediction_dim = 1 if parsed_info['n_class'] == 0 else parsed_info['n_class']
         if self.model_objective in self.objective_task_map:
             self.task = self.objective_task_map[self.model_objective]
@@ -73,9 +72,12 @@ class XGBoostParser(ITreeEnsembleParser):
             raise ValueError(f"{self.model_objective} objective for XGBoost model is not supported")
         self.iteration_range = self._get_iteration_range(iteration_range,
                                                          parsed_info['num_trees'] // self.prediction_dim)
-        self.n_trees = self.iteration_range[1] - self.iteration_range[0]
-        self.trees = self._get_trees(parsed_info, self.iteration_range, self.n_trees)
+        self.n_iterations = self.iteration_range[1] - self.iteration_range[0]
+        # n_trees is not equal to n_iterations if multiclass
+        self.n_trees = self.n_iterations * self.prediction_dim
+        self.trees = self._get_trees(parsed_info, self.iteration_range, self.n_trees, self.prediction_dim)
         self._check_parsing(X)
+        self.print_info(parsed_info)
 
     @staticmethod
     def _parse_binary(buf):
@@ -101,7 +103,8 @@ class XGBoostParser(ITreeEnsembleParser):
             if parsed_info['model_objective'] in ["binary:logistic", "reg:logistic"]:
                 parsed_info['base_score'] = logit(parsed_info['base_score'])  # pylint: disable=no-member
 
-        assert parsed_info['booster_type'] == "gbtree", "Only the 'gbtree' model type is supported, not '%s'!" % parsed_info['booster_type']
+        assert parsed_info['booster_type'] == "gbtree", "Only 'gbtree' boosters are supported for XGBoost, " \
+                                                        "not '%s'!" % parsed_info['booster_type']
 
         # load the gbtree specific parameters
         parsed_info['num_trees'] = binary_parser.read('i')
@@ -167,15 +170,15 @@ class XGBoostParser(ITreeEnsembleParser):
         return parsed_info
 
     @staticmethod
-    def _get_trees(parsed_info, iteration_range, n_trees):
-
-        shape = (n_trees, parsed_info['num_nodes'][iteration_range[0]:iteration_range[1]].max())
+    def _get_trees(parsed_info, iteration_range, n_trees, prediction_dim):
+        start, end = iteration_range[0] * prediction_dim, iteration_range[1] * prediction_dim
+        shape = (n_trees, parsed_info['num_nodes'][start:end].max())
         children_default = np.zeros(shape, dtype=np.int32)
         split_features_index = np.zeros(shape, dtype=np.int32)
         split_values = np.zeros(shape, dtype=np.float32)
         values = np.zeros((shape[0], shape[1], 1), dtype=np.float32)
         trees = []
-        for i in range(iteration_range[0], iteration_range[1]):
+        for i in range(start, end):
             for j in range(parsed_info['num_nodes'][i]):
                 if np.right_shift(parsed_info['node_sindex'][i][j], np.uint32(31)) != 0:
                     children_default[i,j] = parsed_info['node_cleft'][i][j]
@@ -235,6 +238,7 @@ class XGBoostParser(ITreeEnsembleParser):
         return self.original_model.predict(xgboost.DMatrix(X), iteration_range=self.iteration_range)
 
     def predict_leaf_with_model_parser(self, X):
+        # TODO: common - maybe put in abstract class
         def down(node_idx: int, i: int, tree: BinaryTree) -> int:
             '''
             Recursive function to get leaf of a given observation
@@ -256,7 +260,12 @@ class XGBoostParser(ITreeEnsembleParser):
         leaf_indexes = []
         for i in range(X.shape[0]):
             leaf_indexes_obs = []
-            for tree_idx in range(self.iteration_range[0], self.iteration_range[1]):
+            for tree_idx in range(self.n_trees):
                 leaf_indexes_obs.append(down(0, i, self.trees[tree_idx]))
             leaf_indexes.append(leaf_indexes_obs)
         return np.array(leaf_indexes, dtype=np.float32)
+
+    @staticmethod
+    def add_feature_contribs(feature_contribs, feature_contribs_tree, i, prediction_dim):
+        feature_contribs[:, (i % prediction_dim)] += feature_contribs_tree[:, 0]
+        return feature_contribs

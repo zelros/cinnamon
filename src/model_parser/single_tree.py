@@ -39,47 +39,66 @@ class BinaryTree:
         return feature_contribs
 
     def _compute_split_contribs(self, node_weights1: np.array, node_weights2: np.array, type: str):
+        node_weight_fractions1 = node_weights1 / node_weights1[0]
+        node_weight_fractions2 = node_weights2 / node_weights2[0]
         if type == 'mean_diff':
-            return self._compute_split_mean_diffs(node_weights1, node_weights2)
+            return self._compute_split_mean_diffs(node_weight_fractions1, node_weight_fractions2)
+        elif type == 'mean':
+            return self._compute_split_contribs_mean(node_weight_fractions1, node_weight_fractions2)
         elif type == 'size_diff':
-            return self._compute_split_size_diffs(node_weights1, node_weights2)
+            return self._compute_split_size_diffs(node_weight_fractions1, node_weight_fractions2)
 
-    def _compute_split_size_diffs(self, node_weights1, node_weights2):
-        sample_weight_fractions1 = node_weights1 / node_weights1[0]
-        sample_weight_fractions2 = node_weights2 / node_weights2[0]
+    def _compute_split_contribs_mean(self, node_weight_fractions1, node_weight_fractions2):
+        split_contribs_mean = np.zeros((self.n_nodes, self.values.shape[1]))
+        for i in range(self.n_nodes):
+            if self.children_left[i] == -1:  # if leaf
+                continue  # equal to 0 by default
+            if node_weight_fractions1[i] == 0 or node_weight_fractions2[i] == 0:
+                continue
+            else:
+                mean_log_softmax1 = (node_weight_fractions1[self.children_left[i]] * self.values[self.children_left[i]] +
+                                     node_weight_fractions1[self.children_right[i]] * self.values[self.children_right[i]] -
+                                     node_weight_fractions1[i] * self.values[i])
+                mean_log_softmax2 = (node_weight_fractions2[self.children_left[i]] * self.values[self.children_left[i]] +
+                                     node_weight_fractions2[self.children_right[i]] * self.values[self.children_right[i]] -
+                                     node_weight_fractions2[i] * self.values[i])
+                # the diff of mean_log_softmax2 and mean_log_softmax1 is weighted by the minimum of
+                # node_weight_fractions1[i] and node_weight_fractions2[i]
+                split_contribs_mean[i] = mean_log_softmax2 - mean_log_softmax1
+        return split_contribs_mean
+
+    def _compute_split_size_diffs(self, node_weight_fractions1, node_weight_fractions2):
         split_size_diffs = np.zeros(self.n_nodes)
         for i in range(self.n_nodes):
             if self.children_left[i] == -1:  # if leaf
                 split_size_diffs[i] = 0
-            elif sample_weight_fractions1[i] == 0 or sample_weight_fractions2[i] == 0:
+            elif node_weight_fractions1[i] == 0 or node_weight_fractions2[i] == 0:
                 split_size_diffs[i] = 0
             else:
-                # the diff is weighted by the minimum of sample_weight_fractions1[i] and sample_weight_fractions2[i]
-                split_size_diffs[i] = (abs(sample_weight_fractions1[self.children_left[i]] / sample_weight_fractions1[i] -
-                                       sample_weight_fractions2[self.children_left[i]] / sample_weight_fractions2[i]) *
-                                       min(sample_weight_fractions1[i], sample_weight_fractions2[i]))
+                # the diff is weighted by the minimum of node_weight_fractions1[i] and node_weight_fractions2[i]
+                split_size_diffs[i] = (abs(node_weight_fractions1[self.children_left[i]] / node_weight_fractions1[i] -
+                                       node_weight_fractions2[self.children_left[i]] / node_weight_fractions2[i]) *
+                                       min(node_weight_fractions1[i], node_weight_fractions2[i]))
         return split_size_diffs.reshape(len(split_size_diffs), 1)
 
-    def _compute_split_mean_diffs(self, node_weights1, node_weights2):
-        sample_weight_fractions1 = node_weights1 / node_weights1[0]
-        sample_weight_fractions2 = node_weights2 / node_weights2[0]
+    def _compute_split_mean_diffs(self, node_weight_fractions1, node_weight_fractions2):
         split_mean_diffs = np.zeros((self.n_nodes, self.values.shape[1]))
         for i in range(self.n_nodes):
             if self.children_left[i] == -1:  # if leaf
                 continue  # equal to 0 by default
-            if sample_weight_fractions1[i] == 0 or sample_weight_fractions2[i] == 0:
+            if node_weight_fractions1[i] == 0 or node_weight_fractions2[i] == 0:
                 continue
             else:
-                mean_log_softmax1 = (sample_weight_fractions1[self.children_left[i]] * self.values[self.children_left[i]] +
-                                     sample_weight_fractions1[self.children_right[i]] * self.values[self.children_right[i]] -
-                                     sample_weight_fractions1[i] * self.values[i]) / sample_weight_fractions1[i]
-                mean_log_softmax2 = (sample_weight_fractions2[self.children_left[i]] * self.values[self.children_left[i]] +
-                                     sample_weight_fractions2[self.children_right[i]] * self.values[self.children_right[i]] -
-                                     sample_weight_fractions2[i] * self.values[i]) / sample_weight_fractions2[i]
+                mean_log_softmax1 = (node_weight_fractions1[self.children_left[i]] * self.values[self.children_left[i]] +
+                                     node_weight_fractions1[self.children_right[i]] * self.values[self.children_right[i]] -
+                                     node_weight_fractions1[i] * self.values[i]) / node_weight_fractions1[i]
+                mean_log_softmax2 = (node_weight_fractions2[self.children_left[i]] * self.values[self.children_left[i]] +
+                                     node_weight_fractions2[self.children_right[i]] * self.values[self.children_right[i]] -
+                                     node_weight_fractions2[i] * self.values[i]) / node_weight_fractions2[i]
                 # the diff of mean_log_softmax2 and mean_log_softmax1 is weighted by the minimum of
-                # sample_weight_fractions1[i] and sample_weight_fractions2[i]
-                split_mean_diffs[i] = (mean_log_softmax2 - mean_log_softmax1) * min(sample_weight_fractions1[i],
-                                                                                    sample_weight_fractions2[i])
+                # node_weight_fractions1[i] and node_weight_fractions2[i]
+                split_mean_diffs[i] = (mean_log_softmax2 - mean_log_softmax1) * min(node_weight_fractions1[i],
+                                                                                    node_weight_fractions2[i])
         return split_mean_diffs
 
     @staticmethod
@@ -88,8 +107,8 @@ class BinaryTree:
 
     def plot_drift(self, node_weights1, node_weights2, type, feature_names=None):
         split_contribs = self._compute_split_contribs(node_weights1, node_weights2, type)
-        sample_weight_fractions1 = node_weights1 / node_weights1[0]
-        sample_weight_fractions2 = node_weights2 / node_weights2[0]
+        node_weight_fractions1 = node_weights1 / node_weights1[0]
+        node_weight_fractions2 = node_weights2 / node_weights2[0]
         if feature_names is None:
             feature_names = [f'f{i}' for i in range(self.n_features)]
         tree = Tree()
@@ -99,12 +118,12 @@ class BinaryTree:
             else:
                 parent = np.where(self.children_left == i)[0][0] if i in self.children_left \
                     else np.where(self.children_right == i)[0][0]
-            if sample_weight_fractions1[i] != 0 or sample_weight_fractions2[i] != 0:
+            if node_weight_fractions1[i] != 0 or node_weight_fractions2[i] != 0:
                 if self.children_left[i] == -1:
-                    tag = f'({round(sample_weight_fractions1[i], 3)}, {round(sample_weight_fractions2[i], 3)})'
+                    tag = f'({round(node_weight_fractions1[i], 3)}, {round(node_weight_fractions2[i], 3)})'
                 else:
                     tag = f'{feature_names[self.split_features_index[i]]} ' \
-                          f'({round(sample_weight_fractions1[i], 3)}, {round(sample_weight_fractions2[i], 3)}) - ' \
+                          f'({round(node_weight_fractions1[i], 3)}, {round(node_weight_fractions2[i], 3)}) - ' \
                           f'{[round(x, 3) for x in split_contribs[i, :]]}'
                 tree.create_node(tag=tag, identifier=i, parent=parent)
         tree.show()
