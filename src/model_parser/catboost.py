@@ -48,8 +48,15 @@ class CatBoostParser(ITreeEnsembleParser):
         else:
             self.prediction_dim = 1
 
-    @staticmethod
-    def _get_trees(json_cb_model, iteration_range, n_features):
+        # details for cat_features
+        if len(self.cat_feature_indices) > 0:
+            self.cat_feature_index_map = {feat['feature_index']: feat['flat_feature_index']
+                                          for feat in self.json_cb_model['features_info']['categorical_features']}
+            self.inv_cat_feature_index_map = {v: k for k, v in self.cat_feature_index_map.items()}
+            self.cat_label_map = {feat['feature_index']: feat['values']
+                                  for feat in self.json_cb_model['features_info']['categorical_features']}
+
+    def _get_trees(self, json_cb_model, iteration_range, n_features):
         # load all trees
         trees = []
         for tree_index in range(iteration_range[0], iteration_range[1]):
@@ -90,22 +97,31 @@ class CatBoostParser(ITreeEnsembleParser):
             # split features and borders go from leafs to the root
             split_features_index = []
             borders = []
+            split_types = []
             for elem in json_cb_model['oblivious_trees'][tree_index]['splits']:
                 split_type = elem.get('split_type')
+                split_types.append(split_type)
                 if split_type == 'FloatFeature':
                     split_features_index.append(json_cb_model['features_info']['float_features'][elem.get('float_feature_index')]['flat_feature_index'])
                     borders.append(elem['border'])
                 elif split_type == 'OneHotFeature':
                     split_features_index.append(json_cb_model['features_info']['categorical_features'][elem.get('cat_feature_index')]['flat_feature_index'])
                     borders.append(elem['value'])
-                else:  # ctrs
+                elif split_type == 'OnlineCtr':
                     # TODO: afraid of the 0 bellow there could be more than 1 element ?
                     corresponding_cat_index = json_cb_model['features_info']['ctrs'][elem.get('ctr_target_border_idx')]['elements'][0]['cat_feature_index']
-                    split_features_index.append(json_cb_model['features_info']['categorical_features'][corresponding_cat_index]['flat_feature_index'])
+                    split_features_index.append(self.cat_feature_index_map[corresponding_cat_index])
                     borders.append(elem['border'])
+                else:
+                    self._model_parser_error()
+
+            split_types_unraveled = []
+            for counter, split_type in enumerate(split_types):  # go from root to the leaves
+                split_types_unraveled += [split_type] * (2 ** counter)
+            split_types_unraveled += [-1] * len(leaf_weights)
 
             split_features_index_unraveled = []
-            for counter, feature_index in enumerate(split_features_index):  # go from leafs to the root
+            for counter, feature_index in enumerate(split_features_index):
                 split_features_index_unraveled += [feature_index] * (2 ** counter)
             split_features_index_unraveled += [-1] * len(leaf_weights)
 
@@ -122,6 +138,7 @@ class CatBoostParser(ITreeEnsembleParser):
                                     values=leaf_values_unraveled,
                                     train_node_weights=np.array(leaf_weights_unraveled),
                                     n_features=n_features,
+                                    split_types=np.array(split_types_unraveled),
                                     ))
         return trees
 
@@ -153,3 +170,46 @@ class CatBoostParser(ITreeEnsembleParser):
         else:  # multiclass
             return self.original_model.predict_proba(pool, ntree_start=self.iteration_range[0],
                                                      ntree_end=self.iteration_range[1])
+
+    def predict_leaf_with_model_parser(self, X):
+        # réfléchir à ce qui peut être fait dans la class BinaryTree
+        def down(node_idx: int, i: int, tree: BinaryTree) -> int:
+            '''
+            Recursive function to get leaf of a given observation
+            :param node_idx:
+            :param i: raw index of the observation in dataset X
+            :param tree:
+            '''
+            if tree.children_left[node_idx] == -1:
+                return node_idx
+            else:
+                col_idx = tree.split_features_index[node_idx]
+                obs_value = X.iloc[i, col_idx]
+                split_type = tree.split_types[node_idx]
+                split_value = tree.split_values[node_idx]
+                if split_type == 'OneHotFeature':
+                    # at predict catboost compute hash for labels of cat features
+                    hash = self.model_objective._object._calc_cat_feature_perfect_hash(obs_value, col_idx)
+                    cat_feature_idx = self.inv_cat_feature_index_map[col_idx]
+                    if self.cat_label_map[cat_feature_idx][hash] == split_value:
+                        return down(tree.children_right[node_idx], i, tree)
+                    else:
+                        return down(tree.children_left[node_idx], i, tree)
+                elif split_type == 'FloatFeature':
+                    if obs_value > tree.split_values[node_idx]:
+                        return down(tree.children_right[node_idx], i, tree)
+                    else:
+                        return down(tree.children_left[node_idx], i, tree)
+                elif split_type == 'OnlineCtr':
+                    # TODO: handle OnlineCtr for Catboost
+                    self._model_parser_error()
+                else:
+                    self._model_parser_error()
+
+        leaf_indexes = []
+        for i in range(X.shape[0]):
+            leaf_indexes_obs = []
+            for tree_idx in range(self.iteration_range[0], self.iteration_range[1]):
+                leaf_indexes_obs.append(down(0, i, self.trees[tree_idx]))
+            leaf_indexes.append(leaf_indexes_obs)
+        return np.array(leaf_indexes, dtype=np.int32)

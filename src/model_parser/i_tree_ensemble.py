@@ -92,3 +92,7 @@ class ITreeEnsembleParser:
         else:
             pass
         return iteration_range
+
+    @staticmethod
+    def _model_parser_error():
+        raise ValueError('Error in parsing "model": the passed model is not supported in DriftExplainer')
