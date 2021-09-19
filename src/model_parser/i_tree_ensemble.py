@@ -85,8 +85,10 @@ class ITreeEnsembleParser:
 
     @staticmethod
     def _get_iteration_range(iteration_range, initial_n_trees):
-        if iteration_range is not None and iteration_range[1] > initial_n_trees:
+        if iteration_range is None:
+            iteration_range = (0, initial_n_trees)
+        elif iteration_range[1] > initial_n_trees:
             ValueError(f'"iteration_range" values exceeds {initial_n_trees} which is the number of trees in the model')
         else:
-            iteration_range = (0, initial_n_trees)
+            pass
         return iteration_range
