@@ -1,11 +1,19 @@
 import numpy as np
-from treelib import Node, Tree
+from treelib import Tree
 
 
 class BinaryTree:
-    def __init__(self, children_left: np.array, children_right: np.array, children_default: np.array,
-                 split_features_index: np.array, split_values: np.array,
-                 values: np.array, train_node_weights: np.array, n_features: int):
+    def __init__(self,
+                 children_left: np.array,
+                 children_right: np.array,
+                 children_default: np.array,
+                 split_features_index: np.array,
+                 split_values: np.array,
+                 values: np.array,
+                 train_node_weights: np.array,
+                 n_features: int,
+                 split_types: np.array = None,  # only used in Catboost
+                 ):
         self.children_left = children_left
         self.children_right = children_right
         self.children_default = children_default
@@ -15,29 +23,7 @@ class BinaryTree:
         self.train_node_weights = train_node_weights  # does it really correspond to train samples ? (or train + valid ?) I think pbm with bootstrap also
         self.n_features = n_features
         self.n_nodes = len(self.children_left)
-
-    def plot_drift(self, node_weights1, node_weights2, type, feature_names=None):
-        split_contribs = self._compute_split_contribs(node_weights1, node_weights2, type)
-        sample_weight_fractions1 = node_weights1 / node_weights1[0]
-        sample_weight_fractions2 = node_weights2 / node_weights2[0]
-        if feature_names is None:
-            feature_names = [f'f{i}' for i in range(self.n_features)]
-        tree = Tree()
-        for i in range(self.n_nodes):
-            if i == 0:
-                parent = None
-            else:
-                parent = np.where(self.children_left == i)[0][0] if i in self.children_left \
-                    else np.where(self.children_right == i)[0][0]
-            if sample_weight_fractions1[i] != 0 or sample_weight_fractions2[i] != 0:
-                if self.children_left[i] == -1:
-                    tag = f'({round(sample_weight_fractions1[i], 3)}, {round(sample_weight_fractions2[i], 3)})'
-                else:
-                    tag = f'{feature_names[self.split_features_index[i]]} '\
-                          f'({round(sample_weight_fractions1[i], 3)}, {round(sample_weight_fractions2[i], 3)}) - ' \
-                          f'{[round(x, 3) for x in split_contribs[i, :]]}'
-                tree.create_node(tag=tag, identifier=i, parent=parent)
-        tree.show()
+        self.split_types = split_types
 
     def compute_feature_contribs(self, node_weights1: np.array, node_weights2: np.array, type: str) -> np.array:
         """
@@ -99,3 +85,26 @@ class BinaryTree:
     @staticmethod
     def _get_leaves(children_left):
         return [i for i in range(len(children_left)) if children_left[i] == -1]
+
+    def plot_drift(self, node_weights1, node_weights2, type, feature_names=None):
+        split_contribs = self._compute_split_contribs(node_weights1, node_weights2, type)
+        sample_weight_fractions1 = node_weights1 / node_weights1[0]
+        sample_weight_fractions2 = node_weights2 / node_weights2[0]
+        if feature_names is None:
+            feature_names = [f'f{i}' for i in range(self.n_features)]
+        tree = Tree()
+        for i in range(self.n_nodes):
+            if i == 0:
+                parent = None
+            else:
+                parent = np.where(self.children_left == i)[0][0] if i in self.children_left \
+                    else np.where(self.children_right == i)[0][0]
+            if sample_weight_fractions1[i] != 0 or sample_weight_fractions2[i] != 0:
+                if self.children_left[i] == -1:
+                    tag = f'({round(sample_weight_fractions1[i], 3)}, {round(sample_weight_fractions2[i], 3)})'
+                else:
+                    tag = f'{feature_names[self.split_features_index[i]]} ' \
+                          f'({round(sample_weight_fractions1[i], 3)}, {round(sample_weight_fractions2[i], 3)}) - ' \
+                          f'{[round(x, 3) for x in split_contribs[i, :]]}'
+                tree.create_node(tag=tag, identifier=i, parent=parent)
+        tree.show()
