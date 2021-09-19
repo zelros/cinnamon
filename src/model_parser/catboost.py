@@ -23,7 +23,7 @@ class CatBoostParser(ITreeEnsembleParser):
         self.feature_names = None  # specific to catboost
         self.class_names = None  # specific to catboost
 
-    def parse(self, model, iteration_range):
+    def parse(self, model, iteration_range, X):
         self.original_model = model
         tmp_file = tempfile.NamedTemporaryFile()
         self.original_model.save_model(tmp_file.name, format="json")
@@ -38,7 +38,7 @@ class CatBoostParser(ITreeEnsembleParser):
         self.model_objective = self.json_cb_model['model_info']['params']['loss_function']['type']
 
         # I take the exact def of tree depth, so +1
-        self.max_depth = self.json_cb_model['model_info']['params']['tree_learner_options']['depth'] + 1
+        self.max_depth = self.json_cb_model['model_info']['params']['tree_learner_options']['depth']
         self.cat_feature_indices = self.original_model.get_cat_feature_indices()
         self.feature_names = self.original_model.feature_names_
         self.n_features = len(self.feature_names)
@@ -172,7 +172,7 @@ class CatBoostParser(ITreeEnsembleParser):
                                                      ntree_end=self.iteration_range[1])
 
     def predict_leaf_with_model_parser(self, X):
-        # réfléchir à ce qui peut être fait dans la class BinaryTree
+        # TODO: réfléchir à ce qui peut être fait dans la class BinaryTree
         def down(node_idx: int, i: int, tree: BinaryTree) -> int:
             '''
             Recursive function to get leaf of a given observation

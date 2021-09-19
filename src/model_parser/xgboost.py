@@ -58,7 +58,7 @@ class XGBoostParser(ITreeEnsembleParser):
         super().__init__()
         self.model_type = model_type
 
-    def parse(self, model: xgboost.core.Booster, iteration_range: Tuple[int,int]):
+    def parse(self, model: xgboost.core.Booster, iteration_range: Tuple[int,int], X):
         self.original_model = model
         parsed_info = self._parse_binary(self.original_model.save_raw().lstrip(b'binf'))
         if parsed_info['booster_type'] != 'gbtree':
@@ -75,6 +75,7 @@ class XGBoostParser(ITreeEnsembleParser):
                                                          parsed_info['num_trees'] // self.prediction_dim)
         self.n_trees = self.iteration_range[1] - self.iteration_range[0]
         self.trees = self._get_trees(parsed_info, self.iteration_range, self.n_trees)
+        self._check_parsing(X)
 
     @staticmethod
     def _parse_binary(buf):
@@ -232,3 +233,30 @@ class XGBoostParser(ITreeEnsembleParser):
 
     def predict_proba(self, X: pd.DataFrame):
         return self.original_model.predict(xgboost.DMatrix(X), iteration_range=self.iteration_range)
+
+    def predict_leaf_with_model_parser(self, X):
+        def down(node_idx: int, i: int, tree: BinaryTree) -> int:
+            '''
+            Recursive function to get leaf of a given observation
+            :param node_idx:
+            :param i: raw index of the observation in dataset X
+            :param tree:
+            '''
+            if tree.children_left[node_idx] == -1:
+                return node_idx
+            else:
+                col_idx = tree.split_features_index[node_idx]
+                obs_value = X.iloc[i, col_idx]
+                split_value = tree.split_values[node_idx]
+                if obs_value < split_value or pd.isnull(obs_value):
+                    return down(tree.children_left[node_idx], i, tree)
+                else:
+                    return down(tree.children_right[node_idx], i, tree)
+
+        leaf_indexes = []
+        for i in range(X.shape[0]):
+            leaf_indexes_obs = []
+            for tree_idx in range(self.iteration_range[0], self.iteration_range[1]):
+                leaf_indexes_obs.append(down(0, i, self.trees[tree_idx]))
+            leaf_indexes.append(leaf_indexes_obs)
+        return np.array(leaf_indexes, dtype=np.float32)

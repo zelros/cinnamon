@@ -137,7 +137,7 @@ class DriftExplainer(IDriftExplainer):
         # Parse model
         DriftExplainer.logger.info('Step 1 - Parse model')
         self.iteration_range = iteration_range
-        self._parse_model(model, self.iteration_range)
+        self._parse_model(model, self.iteration_range, X1)
         self.task = self.model_parser.task
         if self.model_parser.n_features != X1.shape[1]:
             raise ValueError('Number of columns in X1 (X2) not equal to the number of features required for "model"')
@@ -412,24 +412,24 @@ class DriftExplainer(IDriftExplainer):
             n_class = 2 if model_parser.prediction_dim == 1 else model_parser.prediction_dim
             return [str(i) for i in range(n_class)]
 
-    def _parse_model(self, model, iteration_range):
+    def _parse_model(self, model, iteration_range, X):
         if safe_isinstance(model, 'catboost.core.CatBoostClassifier'):
             self.model_parser: ITreeEnsembleParser = CatBoostParser(model_type='catboost.core.CatBoostClassifier',
                                                                     task='classification')
-            self.model_parser.parse(model, iteration_range)
+            self.model_parser.parse(model, iteration_range, X)
         elif safe_isinstance(model, 'xgboost.core.Booster'):
             self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.core.Booster')
-            self.model_parser.parse(model, iteration_range)
+            self.model_parser.parse(model, iteration_range, X)
         elif safe_isinstance(model, 'xgboost.sklearn.XGBClassifier'):
             self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.sklearn.XGBClassifier')
             # output of get_booster() is in binary format and universal among various XGBoost interfaces
-            self.model_parser.parse(model.get_booster(), iteration_range)
+            self.model_parser.parse(model.get_booster(), iteration_range, X)
         elif safe_isinstance(model, "xgboost.sklearn.XGBRegressor"):
             self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.sklearn.XGBRegressor')
-            self.model_parser.parse(model.get_booster(), iteration_range)
+            self.model_parser.parse(model.get_booster(), iteration_range, X)
         elif safe_isinstance(model, 'xgboost.sklearn.XGBRanker'):
             self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.sklearn.XGBRanker')
-            self.model_parser.parse(model.get_booster(), iteration_range)
+            self.model_parser.parse(model.get_booster(), iteration_range, X)
         else:
             raise TypeError(f'The type of model {type(model).__name__} is not supported in DriftExplainer')
         if self.model_parser.task == 'ranking':

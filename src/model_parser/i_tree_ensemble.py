@@ -21,7 +21,7 @@ class ITreeEnsembleParser:
         self.class_names = None
         self.feature_names = None
 
-    def parse(self, model, iteration_range):
+    def parse(self, model, iteration_range, X):
         pass
 
     def predict_leaf(self, X: pd.DataFrame):
@@ -31,6 +31,9 @@ class ITreeEnsembleParser:
         pass
 
     def predict_proba(self, X: pd.DataFrame):
+        pass
+
+    def predict_leaf_with_model_parser(self, X: pd.DataFrame):
         pass
 
     # TODO: make abstract class instead of this interface
@@ -96,3 +99,7 @@ class ITreeEnsembleParser:
     @staticmethod
     def _model_parser_error():
         raise ValueError('Error in parsing "model": the passed model is not supported in DriftExplainer')
+
+    def _check_parsing(self, X):
+        if not np.array_equal(self.predict_leaf_with_model_parser(X), self.predict_leaf(X)):
+            self._model_parser_error()
