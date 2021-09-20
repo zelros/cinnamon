@@ -161,6 +161,9 @@ class DriftExplainer(IDriftExplainer):
         self.node_weights1 = self.model_parser.get_node_weights(X1, sample_weights=sample_weights1)
         self.node_weights2 = self.model_parser.get_node_weights(X2, sample_weights=sample_weights2)
 
+        # check there is no error in computation of feature contribs
+        self._check_feature_contribs_mean()
+
         # Drift of each feature of the model
         self.feature_drifts = self._compute_feature_drifts(X1, X2, self.n_features, self.cat_feature_indices,
                                                            sample_weights1, sample_weights2)
@@ -408,3 +411,9 @@ class DriftExplainer(IDriftExplainer):
         if self.model_parser.task == 'ranking':
             DriftExplainer.logger.warning('A ranking model was passed to DriftExplainer. It will be treated similarly as'
                                           ' regression model but there is no warranty about the result')
+
+    def _check_feature_contribs_mean(self):
+        difference = (self.model_parser.compute_feature_contribs(self.node_weights1, self.node_weights2, type='mean')
+                      .sum(axis=0) - (self.predictions2.mean(axis=0) - self.predictions1.mean(axis=0)))
+        if any(difference > 10**(-3)):  # any works because difference is an array
+            raise ValueError('Error in computation of feature contributions')

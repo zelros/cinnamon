@@ -102,7 +102,7 @@ class ITreeEnsembleParser:
     def _model_parser_error():
         raise ValueError('Error in parsing "model": the passed model is not supported in DriftExplainer')
 
-    def _check_parsing(self, X):
+    def _check_parsing_with_leaf_predictions(self, X):
         if not np.array_equal(self.predict_leaf_with_model_parser(X), self.predict_leaf(X)):
             self._model_parser_error()
 

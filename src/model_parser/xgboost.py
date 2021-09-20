@@ -76,8 +76,9 @@ class XGBoostParser(ITreeEnsembleParser):
         # n_trees is not equal to n_iterations if multiclass
         self.n_trees = self.n_iterations * self.prediction_dim
         self.trees = self._get_trees(parsed_info, self.iteration_range, self.n_trees, self.prediction_dim)
-        self._check_parsing(X)
-        self.print_info(parsed_info)
+
+        # check there is no error in parsing by making predictions
+        self._check_parsing_with_leaf_predictions(X)
 
     @staticmethod
     def _parse_binary(buf):
