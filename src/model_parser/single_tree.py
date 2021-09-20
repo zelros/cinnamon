@@ -41,15 +41,15 @@ class BinaryTree:
     def _compute_split_contribs(self, node_weights1: np.array, node_weights2: np.array, type: str):
         node_weight_fractions1 = node_weights1 / node_weights1[0]
         node_weight_fractions2 = node_weights2 / node_weights2[0]
-        if type == 'mean_diff':
-            return self._compute_split_mean_diffs(node_weight_fractions1, node_weight_fractions2)
+        if type == 'mean_norm':
+            return self._compute_split_contribs_mean_norm(node_weight_fractions1, node_weight_fractions2)
         elif type == 'mean':
             return self._compute_split_contribs_mean(node_weight_fractions1, node_weight_fractions2)
-        elif type == 'size_diff':
-            return self._compute_split_size_diffs(node_weight_fractions1, node_weight_fractions2)
+        elif type == 'size_norm':
+            return self._compute_split_contribs_size_norm(node_weight_fractions1, node_weight_fractions2)
 
     def _compute_split_contribs_mean(self, node_weight_fractions1, node_weight_fractions2):
-        split_contribs_mean = np.zeros((self.n_nodes, self.values.shape[1]))
+        split_contribs = np.zeros((self.n_nodes, self.values.shape[1]))
         for i in range(self.n_nodes):
             if self.children_left[i] == -1:  # if leaf
                 continue  # equal to 0 by default
@@ -64,25 +64,25 @@ class BinaryTree:
                                      node_weight_fractions2[i] * self.values[i])
                 # the diff of mean_log_softmax2 and mean_log_softmax1 is weighted by the minimum of
                 # node_weight_fractions1[i] and node_weight_fractions2[i]
-                split_contribs_mean[i] = mean_log_softmax2 - mean_log_softmax1
-        return split_contribs_mean
+                split_contribs[i] = mean_log_softmax2 - mean_log_softmax1
+        return split_contribs
 
-    def _compute_split_size_diffs(self, node_weight_fractions1, node_weight_fractions2):
-        split_size_diffs = np.zeros(self.n_nodes)
+    def _compute_split_contribs_size_norm(self, node_weight_fractions1, node_weight_fractions2):
+        split_contribs = np.zeros(self.n_nodes)
         for i in range(self.n_nodes):
             if self.children_left[i] == -1:  # if leaf
-                split_size_diffs[i] = 0
+                split_contribs[i] = 0
             elif node_weight_fractions1[i] == 0 or node_weight_fractions2[i] == 0:
-                split_size_diffs[i] = 0
+                split_contribs[i] = 0
             else:
                 # the diff is weighted by the minimum of node_weight_fractions1[i] and node_weight_fractions2[i]
-                split_size_diffs[i] = (abs(node_weight_fractions1[self.children_left[i]] / node_weight_fractions1[i] -
+                split_contribs[i] = (abs(node_weight_fractions1[self.children_left[i]] / node_weight_fractions1[i] -
                                        node_weight_fractions2[self.children_left[i]] / node_weight_fractions2[i]) *
                                        min(node_weight_fractions1[i], node_weight_fractions2[i]))
-        return split_size_diffs.reshape(len(split_size_diffs), 1)
+        return split_contribs.reshape(len(split_contribs), 1)
 
-    def _compute_split_mean_diffs(self, node_weight_fractions1, node_weight_fractions2):
-        split_mean_diffs = np.zeros((self.n_nodes, self.values.shape[1]))
+    def _compute_split_contribs_mean_norm(self, node_weight_fractions1, node_weight_fractions2):
+        split_contribs = np.zeros((self.n_nodes, self.values.shape[1]))
         for i in range(self.n_nodes):
             if self.children_left[i] == -1:  # if leaf
                 continue  # equal to 0 by default
@@ -97,9 +97,9 @@ class BinaryTree:
                                      node_weight_fractions2[i] * self.values[i]) / node_weight_fractions2[i]
                 # the diff of mean_log_softmax2 and mean_log_softmax1 is weighted by the minimum of
                 # node_weight_fractions1[i] and node_weight_fractions2[i]
-                split_mean_diffs[i] = (mean_log_softmax2 - mean_log_softmax1) * min(node_weight_fractions1[i],
-                                                                                    node_weight_fractions2[i])
-        return split_mean_diffs
+                split_contribs[i] = (mean_log_softmax2 - mean_log_softmax1) * min(node_weight_fractions1[i],
+                                                                                  node_weight_fractions2[i])
+        return split_contribs
 
     @staticmethod
     def _get_leaves(children_left):

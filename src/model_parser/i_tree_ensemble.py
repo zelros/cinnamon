@@ -55,7 +55,7 @@ class ITreeEnsembleParser:
         elif prediction_type == 'proba':
             return self.predict_proba(X)
         else:
-            ValueError(f'Bad value for prediction_type: {prediction_type}')
+            raise ValueError(f'Bad value for prediction_type: {prediction_type}')
 
     def get_node_weights(self, X: pd.DataFrame, sample_weights: np.array) -> List[np.array]:
         """return sum of observation weights in each node of each tree of the model"""
@@ -93,7 +93,7 @@ class ITreeEnsembleParser:
         if iteration_range is None:
             iteration_range = (0, initial_n_trees)
         elif iteration_range[1] > initial_n_trees:
-            ValueError(f'"iteration_range" values exceeds {initial_n_trees} which is the number of trees in the model')
+            raise ValueError(f'"iteration_range" values exceeds {initial_n_trees} which is the number of trees in the model')
         else:
             pass
         return iteration_range
@@ -110,12 +110,12 @@ class ITreeEnsembleParser:
         """
         :param node_weights1:
         :param node_weights2:
-        :param type: type: 'mean_diff', 'size_diff', or 'wasserstein'
+        :param type: type: 'mean_norm', 'size_norm', or 'wasserstein'
         :return:
         """
-        if type == 'size_diff':
+        if type == 'size_norm':
             feature_contribs = np.zeros((self.n_features, 1))
-        elif type in ['mean', 'mean_diff']:
+        elif type in ['mean', 'mean_norm']:
             feature_contribs = np.zeros((self.n_features, self.prediction_dim))
         else:
             raise ValueError(f'Bad value for "type": {type}')

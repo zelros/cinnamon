@@ -21,7 +21,7 @@ def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_w
         kolmogorov_smirnov = ks_2samp(a1, a2)
     else:
         kolmogorov_smirnov = None
-    return {'mean_diff': compute_mean_diff(a1, a2, sample_weights1, sample_weights2),
+    return {'mean_difference': compute_mean_diff(a1, a2, sample_weights1, sample_weights2),
             'wasserstein': wasserstein_distance(a1, a2, sample_weights1, sample_weights2),
             'kolmogorov_smirnov': kolmogorov_smirnov}
 
@@ -179,7 +179,7 @@ class DriftExplainer(IDriftExplainer):
 
     def get_prediction_drift(self, prediction_type="raw"):
         if prediction_type not in ['raw', 'proba']:
-            ValueError(f'Bad value for prediction_type: {prediction_type}')
+            raise ValueError(f'Bad value for prediction_type: {prediction_type}')
         if prediction_type == 'raw':
             return self._compute_prediction_drift(self.predictions1, self.predictions2, self.task, self.prediction_dim,
                                                   self.sample_weights1, self.sample_weights2)
@@ -229,7 +229,7 @@ class DriftExplainer(IDriftExplainer):
             elif task in ['regression', 'ranking']:
                 return compute_drift_num(y1, y2, sample_weights1, sample_weights2)
 
-    def get_feature_contribs(self, type: str = 'size_diff'):
+    def get_feature_contribs(self, type: str = 'size_norm'):
         return self.model_parser.compute_feature_contribs(self.node_weights1, self.node_weights2, type)
 
     def plot_target_drift(self, max_n_cat: int = 20):
@@ -245,7 +245,7 @@ class DriftExplainer(IDriftExplainer):
         if self.predictions1 is None:
             raise ValueError('You must call the fit method before ploting drift')
         if prediction_type not in ['raw', 'proba']:
-            ValueError(f'Bad value for prediction_type: {prediction_type}')
+            raise ValueError(f'Bad value for prediction_type: {prediction_type}')
         if prediction_type == 'raw':
             pred1, pred2 = self.predictions1, self.predictions2
         else:
@@ -282,7 +282,7 @@ class DriftExplainer(IDriftExplainer):
     def _check_feature_param(feature, feature_names):
         if isinstance(feature, str):
             if feature_names is None:
-                ValueError(f'String parameter for "feature" but feature names not found in X1 (X2) columns')
+                raise ValueError(f'String parameter for "feature" but feature names not found in X1 (X2) columns')
             elif feature not in feature_names:
                 raise ValueError(f'{feature} not found in X1 (X2) columns')
             else:
@@ -303,7 +303,7 @@ class DriftExplainer(IDriftExplainer):
         """usually new_X would update X2: the production X"""
         pass
 
-    def plot_feature_contribs(self, n: int = 10, type: str = 'size_diff'):
+    def plot_feature_contribs(self, n: int = 10, type: str = 'size_norm'):
         # a voir si je veux rendre cette fonction plus générique
         if self.model_parser is None:
             raise ValueError('You need to run drift_explainer.fit before you can plot feature_contribs')
@@ -320,8 +320,8 @@ class DriftExplainer(IDriftExplainer):
             ordered_names = [f'feature {i}' for i in order]
         ordered_feature_contribs = feature_contribs[order, :]
 
-        # there is a legend only in the case of multiclass classif (with type == 'mean_diff')
-        if type == 'mean_diff' and self.model_parser.prediction_dim > 1:
+        # there is a legend only in the case of multiclass classif (with type in ['mean', 'mean_norm'])
+        if type in ['mean', 'mean_norm'] and self.model_parser.prediction_dim > 1:
             n_dim = self.model_parser.prediction_dim
             legend_labels = self.class_names
         else:
@@ -340,10 +340,10 @@ class DriftExplainer(IDriftExplainer):
         ax.set_xlabel('Contribution to data drift', fontsize=15)
         plt.show()
 
-    def plot_tree_drift(self, tree_idx: int, type: str = 'size_diff'):
+    def plot_tree_drift(self, tree_idx: int, type: str = 'size_norm'):
         if self.node_weights1 is None:
             raise ValueError('You need to run drift_explainer.fit before calling plot_tree_drift')
-        if type not in ['size_diff', 'mean_diff']:
+        if type not in ['size_norm', 'mean_norm', 'mean']:
             raise ValueError(f'Bad value for "type"')
         else:
             self.model_parser.trees[tree_idx].plot_drift(node_weights1=self.node_weights1[tree_idx],
