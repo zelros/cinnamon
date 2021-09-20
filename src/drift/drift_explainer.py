@@ -171,7 +171,6 @@ class DriftExplainer(IDriftExplainer):
         # Drift of the target ground truth labels
         self.target_drift = self._compute_target_drift(y1, y2, self.task, sample_weights1, sample_weights2)
 
-
         # temporary
         self.X1 = X1
         self.X2 = X2

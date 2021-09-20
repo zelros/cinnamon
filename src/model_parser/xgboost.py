@@ -267,6 +267,9 @@ class XGBoostParser(ITreeEnsembleParser):
         return np.array(leaf_indexes, dtype=np.float32)
 
     @staticmethod
-    def add_feature_contribs(feature_contribs, feature_contribs_tree, i, prediction_dim):
-        feature_contribs[:, (i % prediction_dim)] += feature_contribs_tree[:, 0]
+    def add_feature_contribs(feature_contribs, feature_contribs_tree, i, prediction_dim, type):
+        if type in ['mean', 'mean_norm']:
+            feature_contribs[:, (i % prediction_dim)] += feature_contribs_tree[:, 0]
+        elif type == 'size_norm':
+            feature_contribs += feature_contribs_tree
         return feature_contribs

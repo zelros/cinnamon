@@ -124,13 +124,13 @@ class ITreeEnsembleParser:
         for i, tree in enumerate(self.trees):
             feature_contribs_tree = tree.compute_feature_contribs(node_weights1[i], node_weights2[i], type=type)
             feature_contribs = self.add_feature_contribs(feature_contribs, feature_contribs_tree, i,
-                                                         self.prediction_dim)
+                                                         self.prediction_dim, type)
             feature_contribs_details.append(feature_contribs_tree)
         return feature_contribs  #, feature_contribs_details
 
     # TODO: default behaviro for add_feature_contribs (should be put in Abtract class and only keep signature in
     #  interface)
     @staticmethod
-    def add_feature_contribs(feature_contribs, feature_contribs_tree, i, prediction_dim):
+    def add_feature_contribs(feature_contribs, feature_contribs_tree, i, prediction_dim, type):
         feature_contribs += feature_contribs_tree
         return feature_contribs
