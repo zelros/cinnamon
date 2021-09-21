@@ -16,15 +16,11 @@ class CatBoostParser(ITreeEnsembleParser):
 
     not_supported_objective = {}
 
-    def __init__(self, model_type: str, task: str):
-        super().__init__()
-        self.model_type = model_type
+    def __init__(self, model, model_type, iteration_range, X, task: str):
+        super().__init__(model, model_type, iteration_range, X)
         self.task = task
-        self.feature_names = None  # specific to catboost
-        self.class_names = None  # specific to catboost
 
-    def parse(self, model, iteration_range, X):
-        self.original_model = model
+    def parse(self, iteration_range, X):
         tmp_file = tempfile.NamedTemporaryFile()
         self.original_model.save_model(tmp_file.name, format="json")
         self.json_cb_model = json.load(open(tmp_file.name, "r"))
@@ -55,7 +51,7 @@ class CatBoostParser(ITreeEnsembleParser):
             self.cat_feature_index_map = {feat['feature_index']: feat['flat_feature_index']
                                           for feat in self.json_cb_model['features_info']['categorical_features']}
             self.inv_cat_feature_index_map = {v: k for k, v in self.cat_feature_index_map.items()}
-            self.cat_label_map = {feat['feature_index']: feat['values']
+            self.cat_label_map = {feat['feature_index']: feat['values'] if 'values' in feat else None
                                   for feat in self.json_cb_model['features_info']['categorical_features']}
 
     def _get_trees(self, json_cb_model, iteration_range, n_features):

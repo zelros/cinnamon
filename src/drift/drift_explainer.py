@@ -10,6 +10,11 @@ from ..model_parser.i_tree_ensemble import ITreeEnsembleParser
 from ..model_parser.catboost import CatBoostParser
 from ..model_parser.xgboost import XGBoostParser
 
+from ..drift_correction.i_drift_corrector import IDriftCorrector
+from ..drift_correction.adversarial_drift_corrector import AdversarialDriftCorrector
+from ..drift_correction.tree_ensemble_drift_corrector import TreeEnsembleDriftCorrector
+from ..drift_correction.feature_based_drift_corrector import FeatureBasedDriftCorrector
+
 from .utils import wasserstein_distance_for_cat, compute_distribution_cat, compute_mean_diff, safe_isinstance
 from ..report.drift_report_generator import DriftReportGenerator
 
@@ -17,7 +22,9 @@ logging.basicConfig(format='%(levelname)s:%(asctime)s - (%(pathname)s) %(message
 
 
 def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
-    if sample_weights1 is None and sample_weights2 is None: # TODO: does ks generalize to weighted samples ?
+    # TODO: does ks generalize to weighted samples ?
+    if (sample_weights1 is None and sample_weights2 is None or
+            np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
         kolmogorov_smirnov = ks_2samp(a1, a2)
     else:
         kolmogorov_smirnov = None
@@ -27,7 +34,8 @@ def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_w
 
 
 def compute_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
-    if sample_weights1 is None and sample_weights2 is None:
+    if (sample_weights1 is None and sample_weights2 is None or
+            np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
         # TODO: does chi2 generalize to weighted samples ?
         # indeed, I am sure it is not sufficient to compute the contingency table with weights. So the chi2 formula need
         # to take weights into account
@@ -86,8 +94,6 @@ class DriftExplainer(IDriftExplainer):
 
     def __init__(self):
         self.model_parser = None
-        self.node_weights1 = None
-        self.node_weights2 = None
         self.feature_drifts = None
         self.target_drift = None
         #self.prediction_drift = None
@@ -102,16 +108,17 @@ class DriftExplainer(IDriftExplainer):
         self.pred_proba1 = None
         self.pred_proba2 = None
         self.task = None
+        self.iteration_range = None
         #self.cat_feature_distribs = None
 
         # usefull for the report when I export the dataset (may not be usefull if I stock only the necessary info
         # to make the plot
-        self.X1 = None # same
-        self.X2 = None # same
-        self.sample_weights1 = None # same
-        self.sample_weights2 = None # same
-        self.y1 = None # same
-        self.y2 = None # same
+        self.X1 = None  # same
+        self.X2 = None  # same
+        self.sample_weights1 = None  # same
+        self.sample_weights2 = None  # same
+        self.y1 = None  # same
+        self.y2 = None  # same
 
     def fit(self, model, X1: pd.DataFrame, X2: pd.DataFrame, y1: np.array=None, y2: np.array= None,
             sample_weights1: np.array = None, sample_weights2: np.array = None,
@@ -124,60 +131,47 @@ class DriftExplainer(IDriftExplainer):
         :return:
         """
 
-        # Check arguments pasted to the fit method
-        if (sample_weights1 is not None and np.any(sample_weights1 < 0)) or (sample_weights2 is not None and
-                                                                             np.any(sample_weights2 < 0)):
-            raise ValueError("Elements in sample_weights must be non negative")
-        if (sample_weights1 is not None and np.sum(sample_weights1) == 0) or (sample_weights2 is not None and
-                                                                              np.sum(sample_weights2) == 0):
-            raise ValueError("The sum of sample_weights must be positive")
-        if X2.shape[1] != X1.shape[1]:
-            raise ValueError('X1 and X2 do not have the same number of columns')
+        # Check arguments
+        self.sample_weights1 = self._check_sample_weights(sample_weights1, X1)
+        self.sample_weights2 = self._check_sample_weights(sample_weights2, X2)
+        self._check_X_shape(X1, X2)
+        self.X1 = X1
+        self.X2 = X2
+        self.y1 = y1
+        self.y2 = y2
 
         # Parse model
         DriftExplainer.logger.info('Step 1 - Parse model')
-        self.iteration_range = iteration_range
+        self.iteration_range = iteration_range  # just because it is param passed by user (no it can be modified...)
         self._parse_model(model, self.iteration_range, X1)
         self.task = self.model_parser.task
-        if self.model_parser.n_features != X1.shape[1]:
+        if self.model_parser.n_features != self.X1.shape[1]:
             raise ValueError('Number of columns in X1 (X2) not equal to the number of features required for "model"')
 
         # Set some class attributes
         self.n_features = self.model_parser.n_features
-        self.feature_names = self._get_feature_names(X1, X2, self.model_parser)
+        self.feature_names = self._get_feature_names(self.X1, self.X2, self.model_parser)
         self.cat_feature_indices = self._get_cat_feature_indices(self.model_parser)
         self.class_names = self._get_class_names(self.task, self.model_parser)
         self.prediction_dim = self.model_parser.prediction_dim
 
         # Compute predictions
-        self.predictions1 = self.model_parser.get_predictions(X1, prediction_type="raw")
-        self.predictions2 = self.model_parser.get_predictions(X2, prediction_type="raw")
+        self.predictions1 = self.model_parser.get_predictions(self.X1, prediction_type="raw")
+        self.predictions2 = self.model_parser.get_predictions(self.X2, prediction_type="raw")
         if self.task == "classification":
-            self.pred_proba1 = self.model_parser.get_predictions(X1, prediction_type="proba")
-            self.pred_proba2 = self.model_parser.get_predictions(X2, prediction_type="proba")
+            self.pred_proba1 = self.model_parser.get_predictions(self.X1, prediction_type="proba")
+            self.pred_proba2 = self.model_parser.get_predictions(self.X2, prediction_type="proba")
 
         # Compute node weights: weighted sum of observations in each node
-        DriftExplainer.logger.info('Step 2 - Pass datasets through the model trees')
-        self.node_weights1 = self.model_parser.get_node_weights(X1, sample_weights=sample_weights1)
-        self.node_weights2 = self.model_parser.get_node_weights(X2, sample_weights=sample_weights2)
-
-        # check there is no error in computation of feature contribs
-        self._check_feature_contribs_mean()
+        self.model_parser.fit(self.X1, self.X2, self.sample_weights1, self.sample_weights2)
 
         # Drift of each feature of the model
-        self.feature_drifts = self._compute_feature_drifts(X1, X2, self.n_features, self.cat_feature_indices,
-                                                           sample_weights1, sample_weights2)
+        self.feature_drifts = self._compute_feature_drifts(self.X1, self.X2, self.n_features, self.cat_feature_indices,
+                                                           self.sample_weights1, self.sample_weights2)
 
         # Drift of the target ground truth labels
-        self.target_drift = self._compute_target_drift(y1, y2, self.task, sample_weights1, sample_weights2)
-
-        # temporary
-        self.X1 = X1
-        self.X2 = X2
-        self.sample_weights1 = sample_weights1
-        self.sample_weights2 = sample_weights2
-        self.y1 = y1
-        self.y2 = y2
+        self.target_drift = self._compute_target_drift(self.y1, self.y2, self.task, self.sample_weights1,
+                                                       self.sample_weights2)
 
     def get_prediction_drift(self, prediction_type="raw"):
         if prediction_type not in ['raw', 'proba']:
@@ -231,8 +225,8 @@ class DriftExplainer(IDriftExplainer):
             elif task in ['regression', 'ranking']:
                 return compute_drift_num(y1, y2, sample_weights1, sample_weights2)
 
-    def get_feature_contribs(self, type: str = 'size_norm'):
-        return self.model_parser.compute_feature_contribs(self.node_weights1, self.node_weights2, type)
+    def get_feature_contribs(self, type: str = 'node_size'):
+        return self.model_parser.compute_feature_contribs(type)
 
     def plot_target_drift(self, max_n_cat: int = 20):
         if self.y1 is None or self.y2 is None:
@@ -305,14 +299,14 @@ class DriftExplainer(IDriftExplainer):
         """usually new_X would update X2: the production X"""
         pass
 
-    def plot_feature_contribs(self, n: int = 10, type: str = 'size_norm'):
+    def plot_feature_contribs(self, n: int = 10, type: str = 'node_size'):
         # a voir si je veux rendre cette fonction plus générique
         if self.model_parser is None:
             raise ValueError('You need to run drift_explainer.fit before you can plot feature_contribs')
         # if n > n_features set n = n_features
         n = min(n, self.n_features)
 
-        feature_contribs = self.model_parser.compute_feature_contribs(self.node_weights1, self.node_weights2, type=type)
+        feature_contribs = self.model_parser.compute_feature_contribs(type=type)
         # sort by importance in terms of drift
         # sort in decreasing order according to sum of absolute values of feature_contribs
         order = np.abs(feature_contribs).sum(axis=1).argsort()[::-1].tolist()
@@ -342,16 +336,27 @@ class DriftExplainer(IDriftExplainer):
         ax.set_xlabel('Contribution to data drift', fontsize=15)
         plt.show()
 
-    def plot_tree_drift(self, tree_idx: int, type: str = 'size_norm'):
-        if self.node_weights1 is None:
+    def plot_tree_drift(self, tree_idx: int, type: str = 'node_size'):
+        if self.model_parser.node_weights1 is None:
             raise ValueError('You need to run drift_explainer.fit before calling plot_tree_drift')
-        if type not in ['size_norm', 'mean_norm', 'mean']:
+        if type not in ['node_size', 'mean_norm', 'mean']:
             raise ValueError(f'Bad value for "type"')
         else:
-            self.model_parser.trees[tree_idx].plot_drift(node_weights1=self.node_weights1[tree_idx],
-                                                         node_weights2=self.node_weights2[tree_idx],
+            self.model_parser.trees[tree_idx].plot_drift(node_weights1=self.model_parser.node_weights1[tree_idx],
+                                                         node_weights2=self.model_parser.node_weights2[tree_idx],
                                                          type=type,
                                                          feature_names=self.feature_names)
+
+    def get_correction_weights(self, type='node_size'):
+        if type == 'node_size':
+            drift_corrector = TreeEnsembleDriftCorrector()
+            drift_corrector.get_weights()
+        elif type == 'adversarial':
+            drift_corrector = AdversarialDriftCorrector()
+        elif type == 'feature':
+            drift_corrector = FeatureBasedDriftCorrector()
+        else:
+            raise ValueError(f'Bad value for "type" parameter: {type}')
 
     @staticmethod
     def _get_feature_names(X1, X2, model_parser: ITreeEnsembleParser):
@@ -389,30 +394,38 @@ class DriftExplainer(IDriftExplainer):
 
     def _parse_model(self, model, iteration_range, X):
         if safe_isinstance(model, 'catboost.core.CatBoostClassifier'):
-            self.model_parser: ITreeEnsembleParser = CatBoostParser(model_type='catboost.core.CatBoostClassifier',
-                                                                    task='classification')
-            self.model_parser.parse(model, iteration_range, X)
+            self.model_parser: ITreeEnsembleParser = CatBoostParser(model, 'catboost.core.CatBoostClassifier',
+                                                                    iteration_range, X, task='classification')
         elif safe_isinstance(model, 'xgboost.core.Booster'):
-            self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.core.Booster')
-            self.model_parser.parse(model, iteration_range, X)
+            self.model_parser: ITreeEnsembleParser = XGBoostParser(model, 'xgboost.core.Booster', iteration_range, X)
         elif safe_isinstance(model, 'xgboost.sklearn.XGBClassifier'):
-            self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.sklearn.XGBClassifier')
             # output of get_booster() is in binary format and universal among various XGBoost interfaces
-            self.model_parser.parse(model.get_booster(), iteration_range, X)
+            self.model_parser: ITreeEnsembleParser = XGBoostParser(model.get_booster(), 'xgboost.sklearn.XGBClassifier',
+                                                                   iteration_range, X)
         elif safe_isinstance(model, "xgboost.sklearn.XGBRegressor"):
-            self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.sklearn.XGBRegressor')
-            self.model_parser.parse(model.get_booster(), iteration_range, X)
+            self.model_parser: ITreeEnsembleParser = XGBoostParser(model.get_booster(), 'xgboost.sklearn.XGBRegressor',
+                                                                   iteration_range, X)
         elif safe_isinstance(model, 'xgboost.sklearn.XGBRanker'):
-            self.model_parser: ITreeEnsembleParser = XGBoostParser(model_type='xgboost.sklearn.XGBRanker')
-            self.model_parser.parse(model.get_booster(), iteration_range, X)
+            self.model_parser: ITreeEnsembleParser = XGBoostParser(model.get_booster(), 'xgboost.sklearn.XGBRanker',
+                                                                   iteration_range, X)
         else:
             raise TypeError(f'The type of model {type(model).__name__} is not supported in DriftExplainer')
         if self.model_parser.task == 'ranking':
             DriftExplainer.logger.warning('A ranking model was passed to DriftExplainer. It will be treated similarly as'
                                           ' regression model but there is no warranty about the result')
 
-    def _check_feature_contribs_mean(self):
-        difference = (self.model_parser.compute_feature_contribs(self.node_weights1, self.node_weights2, type='mean')
-                      .sum(axis=0) - (self.predictions2.mean(axis=0) - self.predictions1.mean(axis=0)))
-        if any(difference > 10**(-3)):  # any works because difference is an array
-            raise ValueError('Error in computation of feature contributions')
+    @staticmethod
+    def _check_sample_weights(sample_weights, X):
+        if sample_weights is None:
+            return np.ones(X.shape[0])
+        elif np.any(sample_weights < 0):
+            raise ValueError("Elements in sample_weights must be non negative")
+        elif np.sum(sample_weights) == 0:
+            raise ValueError("The sum of sample_weights must be positive")
+        else:
+            return sample_weights
+
+    @staticmethod
+    def _check_X_shape(X1, X2):
+        if X2.shape[1] != X1.shape[1]:
+            raise ValueError('X1 and X2 do not have the same number of columns')

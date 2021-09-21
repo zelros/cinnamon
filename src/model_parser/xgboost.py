@@ -54,12 +54,10 @@ class XGBoostParser(ITreeEnsembleParser):
                           'reg:tweedie': 'regression',
                           }
 
-    def __init__(self, model_type: str):
-        super().__init__()
-        self.model_type = model_type
+    def __init__(self, model, model_type, iteration_range, X):
+        super().__init__(model, model_type, iteration_range, X)
 
-    def parse(self, model: xgboost.core.Booster, iteration_range: Tuple[int,int], X):
-        self.original_model = model
+    def parse(self, iteration_range: Tuple[int,int], X):
         parsed_info = self._parse_binary(self.original_model.save_raw().lstrip(b'binf'))
         self.max_depth = parsed_info['max_depth']
         self.n_features = parsed_info['n_features']
@@ -270,6 +268,6 @@ class XGBoostParser(ITreeEnsembleParser):
     def add_feature_contribs(feature_contribs, feature_contribs_tree, i, prediction_dim, type):
         if type in ['mean', 'mean_norm']:
             feature_contribs[:, (i % prediction_dim)] += feature_contribs_tree[:, 0]
-        elif type == 'size_norm':
+        elif type == 'node_size':
             feature_contribs += feature_contribs_tree
         return feature_contribs

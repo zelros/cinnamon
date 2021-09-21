@@ -45,8 +45,8 @@ class BinaryTree:
             return self._compute_split_contribs_mean_norm(node_weight_fractions1, node_weight_fractions2)
         elif type == 'mean':
             return self._compute_split_contribs_mean(node_weight_fractions1, node_weight_fractions2)
-        elif type == 'size_norm':
-            return self._compute_split_contribs_size_norm(node_weight_fractions1, node_weight_fractions2)
+        elif type == 'node_size':
+            return self._compute_split_contribs_node_size(node_weight_fractions1, node_weight_fractions2)
 
     def _compute_split_contribs_mean(self, node_weight_fractions1, node_weight_fractions2):
         split_contribs = np.zeros((self.n_nodes, self.values.shape[1]))
@@ -67,7 +67,7 @@ class BinaryTree:
                 split_contribs[i] = mean_log_softmax2 - mean_log_softmax1
         return split_contribs
 
-    def _compute_split_contribs_size_norm(self, node_weight_fractions1, node_weight_fractions2):
+    def _compute_split_contribs_node_size(self, node_weight_fractions1, node_weight_fractions2):
         split_contribs = np.zeros(self.n_nodes)
         for i in range(self.n_nodes):
             if self.children_left[i] == -1:  # if leaf

@@ -4,9 +4,11 @@ from typing import List
 
 
 class ITreeEnsembleParser:
-    def __init__(self):
-        self.model_type = None
-        self.original_model = None
+    def __init__(self, model, model_type, iteration_range, X):
+        self.original_model = model
+        self.model_type = model_type
+        self.iteration_range = iteration_range
+
         self.n_trees = None
         self.max_depth = None
         self.cat_feature_indices = None
@@ -15,27 +17,35 @@ class ITreeEnsembleParser:
         self.prediction_dim = None
         self.model_objective = None
         self.task = None
-        self.iteration_range = None
         self.n_iterations = None
         self.base_score = None  # bias
+        self.node_weights1 = None
+        self.node_weights2 = None
 
         # specific to catboost
         self.class_names = None
         self.feature_names = None
 
-    def parse(self, model, iteration_range, X):
+        self.parse(iteration_range, X)
+
+    def parse(self, iteration_range, X):
         pass
 
-    def predict_leaf(self, X: pd.DataFrame):
+    def fit(self, X1, X2, sample_weights1, sample_weights2):
+        self.node_weights1 = self.get_node_weights(X1, sample_weights=sample_weights1)
+        self.node_weights2 = self.get_node_weights(X2, sample_weights=sample_weights2)
+        self._check_feature_contribs_mean(X1, X2, sample_weights1, sample_weights2)
+
+    def predict_leaf(self, X: pd.DataFrame) -> np.array:
         pass
 
-    def predict_raw(self, X: pd.DataFrame):
+    def predict_raw(self, X: pd.DataFrame) -> np.array:
         pass
 
-    def predict_proba(self, X: pd.DataFrame):
+    def predict_proba(self, X: pd.DataFrame) -> np.array:
         pass
 
-    def predict_leaf_with_model_parser(self, X: pd.DataFrame):
+    def predict_leaf_with_model_parser(self, X: pd.DataFrame) -> np.array:
         pass
 
     # TODO: make abstract class instead of this interface
@@ -59,9 +69,6 @@ class ITreeEnsembleParser:
 
     def get_node_weights(self, X: pd.DataFrame, sample_weights: np.array) -> List[np.array]:
         """return sum of observation weights in each node of each tree of the model"""
-
-        if sample_weights is None:
-            sample_weights = np.ones(len(X))
 
         # pass X through the trees : compute node sample weights, and node values from each tree
         predicted_leaves = self.predict_leaf(X)
@@ -106,14 +113,27 @@ class ITreeEnsembleParser:
         if not np.array_equal(self.predict_leaf_with_model_parser(X), self.predict_leaf(X)):
             self._model_parser_error()
 
-    def compute_feature_contribs(self, node_weights1, node_weights2, type: str):
+    def _check_feature_contribs_mean(self, X1, X2, sample_weights1, sample_weights2):
+        sample_weights1_norm = sample_weights1 / np.sum(sample_weights1)
+        sample_weights2_norm = sample_weights2 / np.sum(sample_weights2)
+        if self.prediction_dim == 1:
+            mean_prediction_diff = np.sum(sample_weights2_norm * self.predict_raw(X2)) -\
+                                   np.sum(sample_weights1_norm * self.predict_raw(X1))
+        else:
+            mean_prediction_diff = np.sum(sample_weights2_norm[:, np.newaxis] * self.predict_raw(X2), axis=0) -\
+                                   np.sum(sample_weights1_norm[:, np.newaxis] * self.predict_raw(X1), axis=0)
+        stat = self.compute_feature_contribs(type='mean').sum(axis=0) - mean_prediction_diff
+        if any(stat > 10**(-3)):  # any works because difference is an array
+            raise ValueError('Error in computation of feature contributions')
+
+    def compute_feature_contribs(self, type: str):
         """
         :param node_weights1:
         :param node_weights2:
-        :param type: type: 'mean_norm', 'size_norm', or 'wasserstein'
+        :param type: type: 'mean_norm', 'node_size', or 'wasserstein'
         :return:
         """
-        if type == 'size_norm':
+        if type == 'node_size':
             feature_contribs = np.zeros((self.n_features, 1))
         elif type in ['mean', 'mean_norm']:
             feature_contribs = np.zeros((self.n_features, self.prediction_dim))
@@ -122,7 +142,8 @@ class ITreeEnsembleParser:
 
         feature_contribs_details = []
         for i, tree in enumerate(self.trees):
-            feature_contribs_tree = tree.compute_feature_contribs(node_weights1[i], node_weights2[i], type=type)
+            feature_contribs_tree = tree.compute_feature_contribs(self.node_weights1[i], self.node_weights2[i],
+                                                                  type=type)
             feature_contribs = self.add_feature_contribs(feature_contribs, feature_contribs_tree, i,
                                                          self.prediction_dim, type)
             feature_contribs_details.append(feature_contribs_tree)
