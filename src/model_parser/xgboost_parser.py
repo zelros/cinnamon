@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Tuple
 from .single_tree import BinaryTree
 import xgboost
-from .i_tree_ensemble import ITreeEnsembleParser
+from .tree_ensemble_parser import TreeEnsembleParser
 import struct
 from packaging import version
 from scipy.special import logit
@@ -33,7 +33,7 @@ class BinaryParser:
         return val
 
 
-class XGBoostParser(ITreeEnsembleParser):
+class XGBoostParser(TreeEnsembleParser):
     objective_task_map = {'reg:squarederror': 'regression',
                           'reg:squaredlogerror': 'regression',
                           'reg:logistic': 'regression',

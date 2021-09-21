@@ -4,10 +4,10 @@ import json
 from .single_tree import BinaryTree
 import catboost
 import tempfile
-from .i_tree_ensemble import ITreeEnsembleParser
+from .tree_ensemble_parser import TreeEnsembleParser
 
 
-class CatBoostParser(ITreeEnsembleParser):
+class CatBoostParser(TreeEnsembleParser):
     objective_task_map = {'RMSE': 'regression',
                           'Logloss':'binary_classification',
                           'CrossEntropy': 'binary_classification',  # TODO: make sure it predicts logits

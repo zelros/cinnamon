@@ -6,9 +6,9 @@ from scipy.stats import wasserstein_distance, ks_2samp
 from typing import List, Tuple
 
 from .i_drift_explainer import IDriftExplainer
-from ..model_parser.i_tree_ensemble import ITreeEnsembleParser
-from ..model_parser.catboost import CatBoostParser
-from ..model_parser.xgboost import XGBoostParser
+from ..model_parser.i_tree_ensemble_parser import ITreeEnsembleParser
+from ..model_parser.catboost_parser import CatBoostParser
+from ..model_parser.xgboost_parser import XGBoostParser
 
 from ..drift_correction.i_drift_corrector import IDriftCorrector
 from ..drift_correction.adversarial_drift_corrector import AdversarialDriftCorrector
@@ -131,7 +131,7 @@ class DriftExplainer(IDriftExplainer):
         :return:
         """
 
-        # Check arguments
+    # Check arguments
         self.sample_weights1 = self._check_sample_weights(sample_weights1, X1)
         self.sample_weights2 = self._check_sample_weights(sample_weights2, X2)
         self._check_X_shape(X1, X2)
@@ -141,7 +141,6 @@ class DriftExplainer(IDriftExplainer):
         self.y2 = y2
 
         # Parse model
-        DriftExplainer.logger.info('Step 1 - Parse model')
         self.iteration_range = iteration_range  # just because it is param passed by user (no it can be modified...)
         self._parse_model(model, self.iteration_range, X1)
         self.task = self.model_parser.task
@@ -185,7 +184,6 @@ class DriftExplainer(IDriftExplainer):
 
     @staticmethod
     def _compute_prediction_drift(predictions1, predictions2, task, prediction_dim, sample_weights1=None, sample_weights2=None):
-        DriftExplainer.logger.info('Evaluate prediction drift')
         prediction_drift = []
         if task == 'classification':
             if prediction_dim == 1:  # binary classif
@@ -201,7 +199,7 @@ class DriftExplainer(IDriftExplainer):
 
     @staticmethod
     def _compute_feature_drifts(X1, X2, n_features, cat_feature_indices, sample_weights1, sample_weights2):
-        DriftExplainer.logger.info('Evaluate univariate drift of each feature')
+        #DriftExplainer.logger.info('Evaluate univariate drift of each feature')
         feature_drifts = []
         for i in range(n_features):
             if i in cat_feature_indices:
@@ -219,7 +217,6 @@ class DriftExplainer(IDriftExplainer):
     @staticmethod
     def _compute_target_drift(y1, y2, task, sample_weights1, sample_weights2):
         if y1 is not None and y2 is not None:
-            DriftExplainer.logger.info('Evaluate drift of the target ground truth labels')
             if task == 'classification':
                 return compute_drift_cat(y1, y2, sample_weights1, sample_weights2)
             elif task in ['regression', 'ranking']:

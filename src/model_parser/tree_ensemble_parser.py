@@ -1,52 +1,22 @@
+from .i_tree_ensemble_parser import ITreeEnsembleParser
+from typing import List
 import pandas as pd
 import numpy as np
-from typing import List
 
 
-class ITreeEnsembleParser:
+class TreeEnsembleParser(ITreeEnsembleParser):
+
     def __init__(self, model, model_type, iteration_range, X):
+        super().__init__()
         self.original_model = model
         self.model_type = model_type
         self.iteration_range = iteration_range
-
-        self.n_trees = None
-        self.max_depth = None
-        self.cat_feature_indices = None
-        self.n_features = None
-        self.trees = None
-        self.prediction_dim = None
-        self.model_objective = None
-        self.task = None
-        self.n_iterations = None
-        self.base_score = None  # bias
-        self.node_weights1 = None
-        self.node_weights2 = None
-
-        # specific to catboost
-        self.class_names = None
-        self.feature_names = None
-
         self.parse(iteration_range, X)
-
-    def parse(self, iteration_range, X):
-        pass
 
     def fit(self, X1, X2, sample_weights1, sample_weights2):
         self.node_weights1 = self.get_node_weights(X1, sample_weights=sample_weights1)
         self.node_weights2 = self.get_node_weights(X2, sample_weights=sample_weights2)
         self._check_feature_contribs_mean(X1, X2, sample_weights1, sample_weights2)
-
-    def predict_leaf(self, X: pd.DataFrame) -> np.array:
-        pass
-
-    def predict_raw(self, X: pd.DataFrame) -> np.array:
-        pass
-
-    def predict_proba(self, X: pd.DataFrame) -> np.array:
-        pass
-
-    def predict_leaf_with_model_parser(self, X: pd.DataFrame) -> np.array:
-        pass
 
     # TODO: make abstract class instead of this interface
     def get_predictions(self, X: pd.DataFrame, prediction_type: str) -> np.array:
@@ -117,10 +87,10 @@ class ITreeEnsembleParser:
         sample_weights1_norm = sample_weights1 / np.sum(sample_weights1)
         sample_weights2_norm = sample_weights2 / np.sum(sample_weights2)
         if self.prediction_dim == 1:
-            mean_prediction_diff = np.sum(sample_weights2_norm * self.predict_raw(X2)) -\
+            mean_prediction_diff = np.sum(sample_weights2_norm * self.predict_raw(X2)) - \
                                    np.sum(sample_weights1_norm * self.predict_raw(X1))
         else:
-            mean_prediction_diff = np.sum(sample_weights2_norm[:, np.newaxis] * self.predict_raw(X2), axis=0) -\
+            mean_prediction_diff = np.sum(sample_weights2_norm[:, np.newaxis] * self.predict_raw(X2), axis=0) - \
                                    np.sum(sample_weights1_norm[:, np.newaxis] * self.predict_raw(X1), axis=0)
         stat = self.compute_feature_contribs(type='mean').sum(axis=0) - mean_prediction_diff
         if any(stat > 10**(-3)):  # any works because difference is an array
@@ -149,8 +119,6 @@ class ITreeEnsembleParser:
             feature_contribs_details.append(feature_contribs_tree)
         return feature_contribs  #, feature_contribs_details
 
-    # TODO: default behaviro for add_feature_contribs (should be put in Abtract class and only keep signature in
-    #  interface)
     @staticmethod
     def add_feature_contribs(feature_contribs, feature_contribs_tree, i, prediction_dim, type):
         feature_contribs += feature_contribs_tree
