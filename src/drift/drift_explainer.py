@@ -344,10 +344,10 @@ class DriftExplainer(IDriftExplainer):
                                                          type=type,
                                                          feature_names=self.feature_names)
 
-    def get_correction_weights(self, type='node_size'):
+    def get_correction_weights(self, type='node_size', max_depth=None, max_ratio=10, return_object: bool = False):
         if type == 'node_size':
-            drift_corrector = TreeEnsembleDriftCorrector()
-            drift_corrector.get_weights()
+            drift_corrector = TreeEnsembleDriftCorrector(self.model_parser, self.X1, max_depth, max_ratio)
+            return drift_corrector.get_weights(return_object)
         elif type == 'adversarial':
             drift_corrector = AdversarialDriftCorrector()
         elif type == 'feature':

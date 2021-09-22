@@ -116,8 +116,7 @@ class BinaryTree:
             if i == 0:
                 parent = None
             else:
-                parent = np.where(self.children_left == i)[0][0] if i in self.children_left \
-                    else np.where(self.children_right == i)[0][0]
+                parent = self.get_parent(i)
             if node_weight_fractions1[i] != 0 or node_weight_fractions2[i] != 0:
                 if self.children_left[i] == -1:
                     tag = f'({round(node_weight_fractions1[i], 3)}, {round(node_weight_fractions2[i], 3)})'
@@ -127,3 +126,20 @@ class BinaryTree:
                           f'{[round(x, 3) for x in split_contribs[i, :]]}'
                 tree.create_node(tag=tag, identifier=i, parent=parent)
         tree.show()
+
+    def get_parent(self, node_idx: int):
+        if node_idx <= 0:
+            raise ValueError(f'Bad value for node_idx: {node_idx}. node_idx should be > 0.')
+        return np.where(self.children_left == node_idx)[0][0] if node_idx in self.children_left \
+            else np.where(self.children_right == node_idx)[0][0]
+
+    def get_depth(self, node_idx: int):
+        if node_idx == 0:
+            return 0
+        else:
+            return self.get_depth(self.get_parent(node_idx)) + 1
+
+    def up(self, node_idx: int, n: int = 1):
+        for _ in range(n):
+            node_idx = self.get_parent(node_idx)
+        return node_idx

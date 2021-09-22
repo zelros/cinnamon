@@ -227,7 +227,9 @@ class XGBoostParser(TreeEnsembleParser):
         print("size_leaf_vector =", parsed_info['size_leaf_vector'])
 
     def predict_leaf(self, X: pd.DataFrame):
-        return self.original_model.predict(xgboost.DMatrix(X), pred_leaf=True, iteration_range=self.iteration_range)
+        predicted_leaves = self.original_model.predict(xgboost.DMatrix(X), pred_leaf=True,
+                                                       iteration_range=self.iteration_range)
+        return predicted_leaves.astype('int32')
 
     def predict_raw(self, X: pd.DataFrame):
         return self.original_model.predict(xgboost.DMatrix(X), output_margin=True,

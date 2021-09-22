@@ -27,7 +27,7 @@ class ITreeEnsembleParser:
     def parse(self, iteration_range, X):
         pass
 
-    def predict_leaf(self, X: pd.DataFrame) -> np.array:
+    def predict_leaf(self, X: pd.DataFrame) -> np.array:  # output dtype = np.int32
         pass
 
     def predict_raw(self, X: pd.DataFrame) -> np.array:
