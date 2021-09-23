@@ -50,8 +50,7 @@ class TreeEnsembleParser(ITreeEnsembleParser):
             node_weights_in_tree = []
             for j in range(tree.n_nodes):
                 if tree.children_left[j] == -1:  # if leaf
-                    node_weights_in_tree.append(np.sum(sample_weights[predicted_leaves[:, index] == j],
-                                                       dtype=np.int32))
+                    node_weights_in_tree.append(np.sum(sample_weights[predicted_leaves[:, index] == j]))
                 else:  # if not a leaf
                     node_weights_in_tree.append(-1)
 
@@ -62,7 +61,7 @@ class TreeEnsembleParser(ITreeEnsembleParser):
                                                node_weights_in_tree[tree.children_right[j]])
 
             # update node_weights
-            node_weights.append(np.array(node_weights_in_tree, dtype=np.int32))
+            node_weights.append(np.array(node_weights_in_tree))
         return node_weights
 
     @staticmethod
@@ -92,7 +91,7 @@ class TreeEnsembleParser(ITreeEnsembleParser):
         else:
             mean_prediction_diff = np.sum(sample_weights2_norm[:, np.newaxis] * self.predict_raw(X2), axis=0) - \
                                    np.sum(sample_weights1_norm[:, np.newaxis] * self.predict_raw(X1), axis=0)
-        stat = self.compute_feature_contribs(type='mean').sum(axis=0) - mean_prediction_diff
+        stat = abs(self.compute_feature_contribs(type='mean').sum(axis=0) - mean_prediction_diff)
         if any(stat > 10**(-3)):  # any works because difference is an array
             raise ValueError('Error in computation of feature contributions')
 
