@@ -135,8 +135,7 @@ class DriftExplainer(IDriftExplainer):
         self.sample_weights1 = self._check_sample_weights(sample_weights1, X1)
         self.sample_weights2 = self._check_sample_weights(sample_weights2, X2)
         self._check_X_shape(X1, X2)
-        self.X1 = X1
-        self.X2 = X2
+        self.X1, self.X2 = self._check_X(X1, X2)
         self.y1 = y1
         self.y2 = y2
 
@@ -274,17 +273,12 @@ class DriftExplainer(IDriftExplainer):
     @staticmethod
     def _check_feature_param(feature, feature_names):
         if isinstance(feature, str):
-            if feature_names is None:
-                raise ValueError(f'String parameter for "feature" but feature names not found in X1 (X2) columns')
-            elif feature not in feature_names:
+            if feature not in feature_names:
                 raise ValueError(f'{feature} not found in X1 (X2) columns')
             else:
                 return feature_names.index(feature), feature
         elif isinstance(feature, int):
-            if feature_names is None:
-                return feature, f'feature {feature}'
-            else:
-                return feature, feature_names[feature]
+            return feature, feature_names[feature]
         else:
             raise ValueError(f'{feature} should be either of type str or int')
 
@@ -307,10 +301,7 @@ class DriftExplainer(IDriftExplainer):
         # sort by importance in terms of drift
         # sort in decreasing order according to sum of absolute values of feature_contribs
         order = np.abs(feature_contribs).sum(axis=1).argsort()[::-1].tolist()
-        if self.feature_names is not None:
-            ordered_names = [self.feature_names[i] for i in order]
-        else:
-            ordered_names = [f'feature {i}' for i in order]
+        ordered_names = [self.feature_names[i] for i in order]
         ordered_feature_contribs = feature_contribs[order, :]
 
         # there is a legend only in the case of multiclass classif (with type in ['mean', 'mean_norm'])
@@ -349,7 +340,7 @@ class DriftExplainer(IDriftExplainer):
             drift_corrector = TreeEnsembleDriftCorrector(self.model_parser, self.X1, max_depth, max_ratio)
             return drift_corrector.get_weights(return_object)
         elif type == 'adversarial':
-            drift_corrector = AdversarialDriftCorrector()
+            drift_corrector = AdversarialDriftCorrector(self.X1.copy(), self.X2.copy())
         elif type == 'feature':
             drift_corrector = FeatureBasedDriftCorrector()
         else:
@@ -358,18 +349,15 @@ class DriftExplainer(IDriftExplainer):
     @staticmethod
     def _get_feature_names(X1, X2, model_parser: ITreeEnsembleParser):
         # we take feature names in X1 and X2 column names if provided
-        if isinstance(X1, pd.DataFrame) and isinstance(X2, pd.DataFrame):
-            if list(X1.columns) != list(X2.columns):
-                raise ValueError('"X1.columns" and "X2.columns" are not equal')
-            else:
-                feature_names = list(X1.columns)
+        if list(X1.columns) != list(X2.columns):
+            raise ValueError('"X1.columns" and "X2.columns" are not equal')
+        feature_names = list(X1.columns)
 
-            # if catboost model, check that order of columns in X1 is consistent with feature names in catboost
-            if model_parser.model_type in ['catboost.core.CatBoostClassifier', 'catboost.core.CatBoostRegressor']:
-                if model_parser.feature_names is not None and model_parser.feature_names != feature_names:
-                    raise ValueError('X1.columns and CatBoost "feature_names_" are ot equal')
-        else:
-            feature_names = None
+        # if catboost model, check that order of columns in X1 is consistent with feature names in catboost
+        if model_parser.model_type in ['catboost.core.CatBoostClassifier', 'catboost.core.CatBoostRegressor']:
+            if model_parser.feature_names is not None and model_parser.feature_names != feature_names:
+                raise ValueError('X1.columns and CatBoost "feature_names_" are ot equal')
+
         return feature_names
 
     @staticmethod
@@ -421,6 +409,10 @@ class DriftExplainer(IDriftExplainer):
             raise ValueError("The sum of sample_weights must be positive")
         else:
             return sample_weights
+
+    @staticmethod
+    def _check_X(X1, X2):
+        return pd.DataFrame(X1), pd.DataFrame(X2)
 
     @staticmethod
     def _check_X_shape(X1, X2):

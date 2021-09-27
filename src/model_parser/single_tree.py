@@ -105,12 +105,10 @@ class BinaryTree:
     def _get_leaves(children_left):
         return [i for i in range(len(children_left)) if children_left[i] == -1]
 
-    def plot_drift(self, node_weights1, node_weights2, type, feature_names=None):
+    def plot_drift(self, node_weights1, node_weights2, type, feature_names):
         split_contribs = self._compute_split_contribs(node_weights1, node_weights2, type)
         node_weight_fractions1 = node_weights1 / node_weights1[0]
         node_weight_fractions2 = node_weights2 / node_weights2[0]
-        if feature_names is None:
-            feature_names = [f'f{i}' for i in range(self.n_features)]
         tree = Tree()
         for i in range(self.n_nodes):
             if i == 0:
