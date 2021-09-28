@@ -339,12 +339,16 @@ class DriftExplainer(IDriftExplainer):
         if type == 'node_size':
             drift_corrector = TreeEnsembleDriftCorrector(self.model_parser, self.X1, max_depth, max_ratio)
             return drift_corrector.get_weights(return_object)
-        elif type == 'adversarial':
-            drift_corrector = AdversarialDriftCorrector(self.X1.copy(), self.X2.copy())
         elif type == 'feature':
             drift_corrector = FeatureBasedDriftCorrector()
         else:
             raise ValueError(f'Bad value for "type" parameter: {type}')
+
+    def get_adversarial_correction_weights(self, n_splits=2, feature_subset=None, max_depth=6, max_ratio=10,
+                                           seed=None, return_object: bool = False):
+        drift_corrector = AdversarialDriftCorrector(self.X1, self.X2, n_splits, feature_subset, max_depth, max_ratio,
+                                                    seed)
+        return drift_corrector.get_weights(return_object)
 
     @staticmethod
     def _get_feature_names(X1, X2, model_parser: ITreeEnsembleParser):
