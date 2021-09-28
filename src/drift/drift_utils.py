@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2_contingency
-import sys
+from scipy.stats import chi2_contingency, wasserstein_distance, ks_2samp
+import matplotlib.pyplot as plt
 
 
 def compute_distribution_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None,
@@ -73,14 +73,6 @@ def wasserstein_distance_for_cat(a1: np.array, a2: np.array, sample_weights1=Non
     return drift
 
 
-def softmax(a: np.array):
-    """
-    :param a: array of log_softmax
-    :return:
-    """
-    return np.exp(a) / np.sum(np.exp(a), axis=1)[:, None]
-
-
 def chi2_test(a: np.array, b: np.array):
     contingency_table = pd.crosstab(a, b)
     chi2_stat, p_value, dof, expected = chi2_contingency(contingency_table)
@@ -90,56 +82,68 @@ def chi2_test(a: np.array, b: np.array):
             'contingency_table': contingency_table}
 
 
-def safe_isinstance(obj, class_path_str):
-    # this function is copy-paste from the code of the SHAP Python library
-    # Copyright (c) 2018 Scott Lundberg
-
-    """
-    Acts as a safe version of isinstance without having to explicitly
-    import packages which may not exist in the users environment.
-    Checks if obj is an instance of type specified by class_path_str.
-    Parameters
-    ----------
-    obj: Any
-        Some object you want to test against
-    class_path_str: str or list
-        A string or list of strings specifying full class paths
-        Example: `sklearn.ensemble.RandomForestRegressor`
-    Returns
-    --------
-    bool: True if isinstance is true and the package exists, False otherwise
-    """
-    if isinstance(class_path_str, str):
-        class_path_strs = [class_path_str]
-    elif isinstance(class_path_str, list) or isinstance(class_path_str, tuple):
-        class_path_strs = class_path_str
+def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
+    # TODO: does ks generalize to weighted samples ?
+    if (sample_weights1 is None and sample_weights2 is None or
+            np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
+        kolmogorov_smirnov = ks_2samp(a1, a2)
     else:
-        class_path_strs = ['']
+        kolmogorov_smirnov = None
+    return {'mean_difference': compute_mean_diff(a1, a2, sample_weights1, sample_weights2),
+            'wasserstein': wasserstein_distance(a1, a2, sample_weights1, sample_weights2),
+            'kolmogorov_smirnov': kolmogorov_smirnov}
 
-    # try each module path in order
-    for class_path_str in class_path_strs:
-        if "." not in class_path_str:
-            raise ValueError("class_path_str must be a string or list of strings specifying a full \
-                module path to a class. Eg, 'sklearn.ensemble.RandomForestRegressor'")
 
-        # Splits on last occurence of "."
-        module_name, class_name = class_path_str.rsplit(".", 1)
+def compute_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
+    if (sample_weights1 is None and sample_weights2 is None or
+            np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
+        # TODO: does chi2 generalize to weighted samples ?
+        # indeed, I am sure it is not sufficient to compute the contingency table with weights. So the chi2 formula need
+        # to take weights into account
+        # chi2 should not take max_n_cat into account. If pbm with number of cat, should be handled by
+        # chi2_test internally with a proper solution
 
-        # here we don't check further if the model is not imported, since we shouldn't have
-        # an object of that types passed to us if the model the type is from has never been
-        # imported. (and we don't want to import lots of new modules for no reason)
-        if module_name not in sys.modules:
-            continue
+        # TODO chi2 not working for now
+        #chi2 = chi2_test(np.concatenate((a1, a2)), np.array([0] * len(a1) + [1] * len(a2)))
+        chi2 = None
+    else:
+        chi2 = None
+    return {'wasserstein': wasserstein_distance_for_cat(a1, a2, sample_weights1, sample_weights2),
+            'chi2_test': chi2}
 
-        module = sys.modules[module_name]
 
-        #Get class
-        _class = getattr(module, class_name, None)
+def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None, title=None,
+                   max_n_cat: float = None):
 
-        if _class is None:
-            continue
+    # compute both distributions
+    distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2, max_n_cat)
+    bar_height = np.array([v for v in distrib.values()]) # len(distrib) rows and 2 columns
 
-        if isinstance(obj, _class):
-            return True
+    #plot
+    index = np.arange(len(distrib))
+    bar_width = 0.35
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.bar(index, bar_height[:, 0], bar_width, label="Dataset 1")
+    ax.bar(index+bar_width, bar_height[:, 1], bar_width, label="Dataset 2")
 
-    return False
+    ax.set_xlabel('Category')
+    ax.set_ylabel('Percentage')
+    ax.set_title(title)
+    ax.set_xticks(index + bar_width / 2)
+    ax.set_xticklabels(list(distrib.keys()), rotation=30)
+    ax.legend()
+    plt.show()
+
+
+def plot_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array=None, sample_weights2: np.array=None,
+                   title=None):
+    #distrib = compute_distribution_num(a1, a2, sample_weights1, sample_weights2)
+    plt.hist(a1, bins=100, density=True, weights=sample_weights1, alpha=0.3)
+    plt.hist(a2, bins=100, density=True, weights=sample_weights2, alpha=0.3)
+    plt.legend(['Dataset 1', 'Dataset 2'])
+    plt.title(title)
+    plt.show()
+
+
+def compute_distribution_num(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
+    pass

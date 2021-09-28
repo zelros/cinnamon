@@ -2,7 +2,6 @@ import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from scipy.stats import wasserstein_distance, ks_2samp
 from typing import List, Tuple
 
 from .i_drift_explainer import IDriftExplainer
@@ -15,77 +14,11 @@ from ..drift_correction.adversarial_drift_corrector import AdversarialDriftCorre
 from ..drift_correction.tree_ensemble_drift_corrector import TreeEnsembleDriftCorrector
 from ..drift_correction.feature_based_drift_corrector import FeatureBasedDriftCorrector
 
-from .utils import wasserstein_distance_for_cat, compute_distribution_cat, compute_mean_diff, safe_isinstance
+from .drift_utils import compute_drift_cat, compute_drift_num, plot_drift_cat, plot_drift_num
+from ..common.dev_utils import safe_isinstance
 from ..report.drift_report_generator import DriftReportGenerator
 
 logging.basicConfig(format='%(levelname)s:%(asctime)s - (%(pathname)s) %(message)s', level=logging.INFO)
-
-
-def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
-    # TODO: does ks generalize to weighted samples ?
-    if (sample_weights1 is None and sample_weights2 is None or
-            np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
-        kolmogorov_smirnov = ks_2samp(a1, a2)
-    else:
-        kolmogorov_smirnov = None
-    return {'mean_difference': compute_mean_diff(a1, a2, sample_weights1, sample_weights2),
-            'wasserstein': wasserstein_distance(a1, a2, sample_weights1, sample_weights2),
-            'kolmogorov_smirnov': kolmogorov_smirnov}
-
-
-def compute_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
-    if (sample_weights1 is None and sample_weights2 is None or
-            np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
-        # TODO: does chi2 generalize to weighted samples ?
-        # indeed, I am sure it is not sufficient to compute the contingency table with weights. So the chi2 formula need
-        # to take weights into account
-        # chi2 should not take max_n_cat into account. If pbm with number of cat, should be handled by
-        # chi2_test internally with a proper solution
-
-        # TODO chi2 not working for now
-        #chi2 = chi2_test(np.concatenate((a1, a2)), np.array([0] * len(a1) + [1] * len(a2)))
-        chi2 = None
-    else:
-        chi2 = None
-    return {'wasserstein': wasserstein_distance_for_cat(a1, a2, sample_weights1, sample_weights2),
-            'chi2_test': chi2}
-
-
-def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None, title=None,
-                   max_n_cat: float = None):
-
-    # compute both distributions
-    distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2, max_n_cat)
-    bar_height = np.array([v for v in distrib.values()]) # len(distrib) rows and 2 columns
-
-    #plot
-    index = np.arange(len(distrib))
-    bar_width = 0.35
-    fig, ax = plt.subplots(figsize=(10, 6))
-    ax.bar(index, bar_height[:, 0], bar_width, label="Dataset 1")
-    ax.bar(index+bar_width, bar_height[:, 1], bar_width, label="Dataset 2")
-
-    ax.set_xlabel('Category')
-    ax.set_ylabel('Percentage')
-    ax.set_title(title)
-    ax.set_xticks(index + bar_width / 2)
-    ax.set_xticklabels(list(distrib.keys()), rotation=30)
-    ax.legend()
-    plt.show()
-
-
-def plot_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array=None, sample_weights2: np.array=None,
-                   title=None):
-    #distrib = compute_distribution_num(a1, a2, sample_weights1, sample_weights2)
-    plt.hist(a1, bins=100, density=True, weights=sample_weights1, alpha=0.3)
-    plt.hist(a2, bins=100, density=True, weights=sample_weights2, alpha=0.3)
-    plt.legend(['Dataset 1', 'Dataset 2'])
-    plt.title(title)
-    plt.show()
-
-
-def compute_distribution_num(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
-    pass
 
 
 class DriftExplainer(IDriftExplainer):
@@ -337,7 +270,8 @@ class DriftExplainer(IDriftExplainer):
 
     def get_correction_weights(self, type='node_size', max_depth=None, max_ratio=10, return_object: bool = False):
         if type == 'node_size':
-            drift_corrector = TreeEnsembleDriftCorrector(self.model_parser, self.X1, max_depth, max_ratio)
+            drift_corrector: IDriftCorrector = TreeEnsembleDriftCorrector(self.model_parser, self.X1, max_depth,
+                                                                          max_ratio)
             return drift_corrector.get_weights(return_object)
         elif type == 'feature':
             drift_corrector = FeatureBasedDriftCorrector()
@@ -346,8 +280,8 @@ class DriftExplainer(IDriftExplainer):
 
     def get_adversarial_correction_weights(self, n_splits=2, feature_subset=None, max_depth=6, max_ratio=10,
                                            seed=None, return_object: bool = False):
-        drift_corrector = AdversarialDriftCorrector(self.X1, self.X2, n_splits, feature_subset, max_depth, max_ratio,
-                                                    seed)
+        drift_corrector: IDriftCorrector = AdversarialDriftCorrector(self.X1, self.X2, n_splits, feature_subset,
+                                                                     max_depth, max_ratio, seed)
         return drift_corrector.get_weights(return_object)
 
     @staticmethod

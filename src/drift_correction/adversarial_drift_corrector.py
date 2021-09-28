@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 
 from .i_drift_corrector import IDriftCorrector
+from ..common.math_utils import threshold_array
 
 
 class AdversarialDriftCorrector(IDriftCorrector):
@@ -58,9 +59,3 @@ class AdversarialDriftCorrector(IDriftCorrector):
             pred_proba = clf.predict_proba(X_valid.loc[val_idx_in_X1])[:, 1]
             weights[val_idx_in_X1] = threshold_array(pred_proba / (1 - pred_proba), max_ratio)
         return weights, cv_models
-
-
-def threshold_array(a, max_ratio):
-    a[a > max_ratio] = max_ratio
-    a[a < 1/max_ratio] = 1/max_ratio
-    return a
