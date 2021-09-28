@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from scipy.stats import chi2_contingency, wasserstein_distance, ks_2samp
+from scipy.stats import chi2_contingency, wasserstein_distance, ks_2samp, distributions
 import matplotlib.pyplot as plt
 
 
@@ -83,15 +83,47 @@ def chi2_test(a: np.array, b: np.array):
 
 
 def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
-    # TODO: does ks generalize to weighted samples ?
     if (sample_weights1 is None and sample_weights2 is None or
             np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
         kolmogorov_smirnov = ks_2samp(a1, a2)
     else:
-        kolmogorov_smirnov = None
+        kolmogorov_smirnov = ks_weighted(a1, a2, sample_weights1, sample_weights2)
     return {'mean_difference': compute_mean_diff(a1, a2, sample_weights1, sample_weights2),
             'wasserstein': wasserstein_distance(a1, a2, sample_weights1, sample_weights2),
             'kolmogorov_smirnov': kolmogorov_smirnov}
+
+
+def ks_weighted(data1, data2, wei1, wei2, alternative='two-sided'):
+    # kolmogorov smirnov test for weighted samples
+    # taken from https://stackoverflow.com/questions/40044375/how-to-calculate-the-kolmogorov-smirnov-statistic-between-two-weighted-samples
+    # see also: https://github.com/scipy/scipy/issues/12315
+    # TODO: verify p-value computation is good
+    ix1 = np.argsort(data1)
+    ix2 = np.argsort(data2)
+    data1 = data1[ix1]
+    data2 = data2[ix2]
+    wei1 = wei1[ix1]
+    wei2 = wei2[ix2]
+    data = np.concatenate([data1, data2])
+    cwei1 = np.hstack([0, np.cumsum(wei1)/sum(wei1)])
+    cwei2 = np.hstack([0, np.cumsum(wei2)/sum(wei2)])
+    cdf1we = cwei1[np.searchsorted(data1, data, side='right')]
+    cdf2we = cwei2[np.searchsorted(data2, data, side='right')]
+    d = np.max(np.abs(cdf1we - cdf2we))
+    # calculate p-value
+    n1 = data1.shape[0]
+    n2 = data2.shape[0]
+    m, n = sorted([float(n1), float(n2)], reverse=True)
+    en = m * n / (m + n)
+    if alternative == 'two-sided':
+        prob = distributions.kstwo.sf(d, np.round(en))
+    else:
+        z = np.sqrt(en) * d
+        # Use Hodges' suggested approximation Eqn 5.3
+        # Requires m to be the larger of (n1, n2)
+        expt = -2 * z**2 - 2 * z * (m + 2*n)/np.sqrt(m*n*(m+n))/3.0
+        prob = np.exp(expt)
+    return {'statistic': d, 'pvalue': prob}
 
 
 def compute_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
