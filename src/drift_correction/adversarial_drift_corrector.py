@@ -13,7 +13,7 @@ class AdversarialDriftCorrector(IDriftCorrector):
         self.X1 = X1
         self.X2 = X2
         self.n_splits = n_splits
-        self.feature_subset = feature_subset
+        self.feature_subset = feature_subset if feature_subset is not None else X1.columns.to_list()
         self.max_depth = max_depth
         self.max_ratio = max_ratio
         self.seed = seed
@@ -33,10 +33,7 @@ class AdversarialDriftCorrector(IDriftCorrector):
         # TODO: handle feature subset if int provided
         sample_weights = np.array([X2.shape[0] / X1.shape[0]] * X1.shape[0] + [1.0] * X2.shape[0])
         y = np.array([0] * X1.shape[0] + [1] * X2.shape[0])
-        if feature_subset is not None:
-            X = pd.concat([X1[feature_subset], X2[feature_subset]], axis=0, ignore_index=True)
-        else:
-            X = pd.concat([X1, X2], axis=0, ignore_index=True)
+        X = pd.concat([X1[feature_subset], X2[feature_subset]], axis=0, ignore_index=True)
         kf = KFold(n_splits=n_splits, random_state=seed, shuffle=True)
         weights = np.zeros(X1.shape[0])
         cv_models = []
@@ -44,7 +41,7 @@ class AdversarialDriftCorrector(IDriftCorrector):
             X_train, X_valid = X.loc[train_idx], X.loc[val_idx]
             y_train, y_valid = y[train_idx], y[val_idx]
             sample_weights_train, sample_weights_valid = sample_weights[train_idx], sample_weights[val_idx]
-            clf = XGBClassifier(n_estimators=1000,
+            clf = XGBClassifier(n_estimators=10000,
                                 booster="gbtree",
                                 objective="binary:logistic",
                                 learning_rate=0.1,
@@ -52,7 +49,7 @@ class AdversarialDriftCorrector(IDriftCorrector):
                                 use_label_encoder=False,
                                 seed=seed)
             clf.fit(X=X_train, y=y_train, eval_set=[(X_valid, y_valid)], early_stopping_rounds=20,
-                    sample_weight=sample_weights_train, verbose=10, eval_metric=['logloss'],
+                    sample_weight=sample_weights_train, verbose=10, eval_metric=['error', 'auc', 'logloss'],
                     sample_weight_eval_set=[sample_weights_valid])
             cv_models.append(clf)
             val_idx_in_X1 = val_idx[val_idx < X1.shape[0]]

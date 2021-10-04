@@ -73,8 +73,13 @@ def wasserstein_distance_for_cat(a1: np.array, a2: np.array, sample_weights1=Non
     return drift
 
 
-def chi2_test(a: np.array, b: np.array):
-    contingency_table = pd.crosstab(a, b)
+def chi2_test(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
+    # TODO: generalization of Chi2 for weights != np.ones is complicated (need verif)
+    # chi2 do not take max_n_cat into account. If pbm with number of cat, should be handled by
+    # chi2_test internally with a proper solution
+    distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2)
+    contingency_table = pd.DataFrame({cat: pd.Series({'X1': distrib[cat][0] * len(a1), 'X2': distrib[cat][1] * len(a2)})
+                                      for cat in distrib.keys()})
     chi2_stat, p_value, dof, expected = chi2_contingency(contingency_table)
     return {'chi2_stat': chi2_stat,
             'p_value': p_value,
@@ -127,25 +132,12 @@ def ks_weighted(data1, data2, wei1, wei2, alternative='two-sided'):
 
 
 def compute_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
-    if (sample_weights1 is None and sample_weights2 is None or
-            np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
-        # TODO: does chi2 generalize to weighted samples ?
-        # indeed, I am sure it is not sufficient to compute the contingency table with weights. So the chi2 formula need
-        # to take weights into account
-        # chi2 should not take max_n_cat into account. If pbm with number of cat, should be handled by
-        # chi2_test internally with a proper solution
-
-        # TODO chi2 not working for now
-        #chi2 = chi2_test(np.concatenate((a1, a2)), np.array([0] * len(a1) + [1] * len(a2)))
-        chi2 = None
-    else:
-        chi2 = None
     return {'wasserstein': wasserstein_distance_for_cat(a1, a2, sample_weights1, sample_weights2),
-            'chi2_test': chi2}
+            'chi2_test': chi2_test(a1, a2, sample_weights1, sample_weights2)}
 
 
 def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None, title=None,
-                   max_n_cat: float = None):
+                   max_n_cat: float = None, figsize=(10, 6)):
 
     # compute both distributions
     distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2, max_n_cat)
@@ -154,7 +146,7 @@ def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weig
     #plot
     index = np.arange(len(distrib))
     bar_width = 0.35
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=figsize)
     ax.bar(index, bar_height[:, 0], bar_width, label="Dataset 1")
     ax.bar(index+bar_width, bar_height[:, 1], bar_width, label="Dataset 2")
 
@@ -168,11 +160,12 @@ def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weig
 
 
 def plot_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array=None, sample_weights2: np.array=None,
-                   title=None):
+                   title=None, figsize=(7,5)):
     #distrib = compute_distribution_num(a1, a2, sample_weights1, sample_weights2)
-    plt.hist(a1, bins=100, density=True, weights=sample_weights1, alpha=0.3)
-    plt.hist(a2, bins=100, density=True, weights=sample_weights2, alpha=0.3)
-    plt.legend(['Dataset 1', 'Dataset 2'])
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.hist(a1, bins=100, density=True, weights=sample_weights1, alpha=0.3)
+    ax.hist(a2, bins=100, density=True, weights=sample_weights2, alpha=0.3)
+    ax.legend(['Dataset 1', 'Dataset 2'])
     plt.title(title)
     plt.show()
 

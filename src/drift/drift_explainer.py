@@ -157,16 +157,17 @@ class DriftExplainer(IDriftExplainer):
     def get_feature_contribs(self, type: str = 'node_size'):
         return self.model_parser.compute_feature_contribs(type)
 
-    def plot_target_drift(self, max_n_cat: int = 20):
+    def plot_target_drift(self, max_n_cat: int = 20, figsize=(7, 5)):
         if self.y1 is None or self.y2 is None:
             raise ValueError('"y1" or "y2" argument was not passed to drift_explainer.fit method')
         if self.task == 'classification':
             plot_drift_cat(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
-                           max_n_cat=max_n_cat)
+                           max_n_cat=max_n_cat, figsize=figsize)
         elif self.task == 'regression':
-            plot_drift_num(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target')
+            plot_drift_num(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
+                           figsize=figsize)
 
-    def plot_prediction_drift(self, prediction_type='raw'):
+    def plot_prediction_drift(self, prediction_type='raw', figsize=(7, 5)):
         if self.predictions1 is None:
             raise ValueError('You must call the fit method before ploting drift')
         if prediction_type not in ['raw', 'proba']:
@@ -179,9 +180,10 @@ class DriftExplainer(IDriftExplainer):
         if self.task == 'classification' and self.model_parser.prediction_dim > 1:  # multiclass classif
             for i in range(self.model_parser.prediction_dim):
                 plot_drift_num(pred1[:, i], pred2[:, i], self.sample_weights1, self.sample_weights2,
-                               title=f'{self.class_names[i]}')
+                               title=f'{self.class_names[i]}', figsize=figsize)
         else:  # binary classif or regression
-            plot_drift_num(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions')
+            plot_drift_num(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions',
+                           figsize=figsize)
 
     def get_feature_drift(self, feature) -> dict:
         if self.X1 is None:
@@ -192,16 +194,17 @@ class DriftExplainer(IDriftExplainer):
     def get_feature_drifts(self) -> List[dict]:
         return self.feature_drifts
 
-    def plot_feature_drift(self, feature, max_n_cat: int = 20):
+    def plot_feature_drift(self, feature, max_n_cat: int = 20, figsize=(7, 5)):
         if self.X1 is None:
             raise ValueError('You must call the fit method before calling "get_feature_drift"')
         feature_index, feature_name = self._check_feature_param(feature, self.feature_names)
         if feature_index in self.cat_feature_indices:
             plot_drift_cat(self.X1.iloc[:,feature_index].values, self.X2.iloc[:,feature_index].values,
-                           self.sample_weights1, self.sample_weights2, title=feature_name, max_n_cat=max_n_cat)
+                           self.sample_weights1, self.sample_weights2, title=feature_name, max_n_cat=max_n_cat,
+                           figsize=figsize)
         else:
             plot_drift_num(self.X1.iloc[:,feature_index].values, self.X2.iloc[:,feature_index].values,
-                           self.sample_weights1, self.sample_weights2, title=feature_name)
+                           self.sample_weights1, self.sample_weights2, title=feature_name, figsize=figsize)
 
     @staticmethod
     def _check_feature_param(feature, feature_names):
@@ -280,6 +283,9 @@ class DriftExplainer(IDriftExplainer):
 
     def get_adversarial_correction_weights(self, n_splits=2, feature_subset=None, max_depth=6, max_ratio=10,
                                            seed=None, return_object: bool = False):
+        # handle case where feature subset contains column numbers
+        if feature_subset is not None:
+            feature_subset = [self._check_feature_param(feature, self.feature_names)[1] for feature in feature_subset]
         drift_corrector: IDriftCorrector = AdversarialDriftCorrector(self.X1, self.X2, n_splits, feature_subset,
                                                                      max_depth, max_ratio, seed)
         return drift_corrector.get_weights(return_object)
