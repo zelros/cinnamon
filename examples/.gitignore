@@ -3,3 +3,4 @@ models/
 *test.ipynb
 *boston.ipynb
 catboost_info
+data/
