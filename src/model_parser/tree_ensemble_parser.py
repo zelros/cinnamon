@@ -16,7 +16,7 @@ class TreeEnsembleParser(ITreeEnsembleParser):
     def fit(self, X1, X2, sample_weights1, sample_weights2):
         self.node_weights1 = self.get_node_weights(X1, sample_weights=sample_weights1)
         self.node_weights2 = self.get_node_weights(X2, sample_weights=sample_weights2)
-        self._check_feature_contribs_mean(X1, X2, sample_weights1, sample_weights2)
+        #self._check_feature_contribs_mean(X1, X2, sample_weights1, sample_weights2)
 
     # TODO: make abstract class instead of this interface
     def get_predictions(self, X: pd.DataFrame, prediction_type: str) -> np.array:

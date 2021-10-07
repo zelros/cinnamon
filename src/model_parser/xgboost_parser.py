@@ -76,7 +76,7 @@ class XGBoostParser(TreeEnsembleParser):
         self.trees = self._get_trees(parsed_info, self.iteration_range, self.n_trees, self.prediction_dim)
 
         # check there is no error in parsing by making predictions
-        self._check_parsing_with_leaf_predictions(X)
+        #self._check_parsing_with_leaf_predictions(X)
 
     @staticmethod
     def _parse_binary(buf):
