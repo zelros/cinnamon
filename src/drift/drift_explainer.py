@@ -194,11 +194,11 @@ class DriftExplainer(IDriftExplainer):
     def get_feature_drifts(self) -> List[dict]:
         return self.feature_drifts
 
-    def plot_feature_drift(self, feature, max_n_cat: int = 20, figsize=(7, 5)):
+    def plot_feature_drift(self, feature, max_n_cat: int = 20, figsize=(7, 5), as_discrete=False):
         if self.X1 is None:
             raise ValueError('You must call the fit method before calling "get_feature_drift"')
         feature_index, feature_name = self._check_feature_param(feature, self.feature_names)
-        if feature_index in self.cat_feature_indices:
+        if feature_index in self.cat_feature_indices or as_discrete:
             plot_drift_cat(self.X1.iloc[:,feature_index].values, self.X2.iloc[:,feature_index].values,
                            self.sample_weights1, self.sample_weights2, title=feature_name, max_n_cat=max_n_cat,
                            figsize=figsize)
