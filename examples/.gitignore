@@ -1,6 +1,6 @@
 *.ipynb_checkpoints
 models/
 *test.ipynb
-*boston.ipynb
 catboost_info
 data/
+*pending.ipynb
