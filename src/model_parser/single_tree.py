@@ -25,7 +25,7 @@ class BinaryTree:
         self.n_nodes = len(self.children_left)
         self.split_types = split_types
 
-    def compute_feature_contribs(self, node_weights1: np.array, node_weights2: np.array, type: str) -> np.array:
+    def compute_drift_values(self, node_weights1: np.array, node_weights2: np.array, type: str) -> np.array:
         """
         :param node_weights1:
         :param node_weights2: Usually correspond to train dataset
@@ -33,10 +33,10 @@ class BinaryTree:
         """
         assert len(node_weights1) == len(node_weights2)
         split_contribs = self._compute_split_contribs(node_weights1, node_weights2, type)
-        feature_contribs = np.zeros((self.n_features, split_contribs.shape[1]))
+        drift_values = np.zeros((self.n_features, split_contribs.shape[1]))
         for feature_index, contribs in zip(self.split_features_index, split_contribs):
-            feature_contribs[feature_index, :] += contribs
-        return feature_contribs
+            drift_values[feature_index, :] += contribs
+        return drift_values
 
     def _compute_split_contribs(self, node_weights1: np.array, node_weights2: np.array, type: str):
         node_weight_fractions1 = node_weights1 / node_weights1[0]

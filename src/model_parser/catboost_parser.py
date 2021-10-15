@@ -4,10 +4,11 @@ import json
 from .single_tree import BinaryTree
 import catboost
 import tempfile
-from .tree_ensemble_parser import TreeEnsembleParser
+from typing import Tuple
+from .tree_ensemble_parser import TreeEnsembleParserABC
 
 
-class CatBoostParser(TreeEnsembleParser):
+class CatBoostParser(TreeEnsembleParserABC):
     objective_task_map = {'RMSE': 'regression',
                           'Logloss':'binary_classification',
                           'CrossEntropy': 'binary_classification',  # TODO: make sure it predicts logits
@@ -16,11 +17,11 @@ class CatBoostParser(TreeEnsembleParser):
 
     not_supported_objective = {}
 
-    def __init__(self, model, model_type, iteration_range, X, task: str):
-        super().__init__(model, model_type, iteration_range, X)
+    def __init__(self, model, model_type, iteration_range, task: str):
+        super().__init__(model, model_type, iteration_range)
         self.task = task
 
-    def parse(self, iteration_range, X):
+    def parse(self, iteration_range: Tuple[int, int] = None):
         tmp_file = tempfile.NamedTemporaryFile()
         self.original_model.save_model(tmp_file.name, format="json")
         self.json_cb_model = json.load(open(tmp_file.name, "r"))

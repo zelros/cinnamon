@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Tuple
 from .single_tree import BinaryTree
 import xgboost
-from .tree_ensemble_parser import TreeEnsembleParser
+from .tree_ensemble_parser import TreeEnsembleParserABC
 import struct
 from packaging import version
 from scipy.special import logit
@@ -33,7 +33,7 @@ class BinaryParser:
         return val
 
 
-class XGBoostParser(TreeEnsembleParser):
+class XGBoostParser(TreeEnsembleParserABC):
     objective_task_map = {'reg:squarederror': 'regression',
                           'reg:squaredlogerror': 'regression',
                           'reg:logistic': 'regression',
@@ -54,10 +54,10 @@ class XGBoostParser(TreeEnsembleParser):
                           'reg:tweedie': 'regression',
                           }
 
-    def __init__(self, model, model_type, iteration_range, X):
-        super().__init__(model, model_type, iteration_range, X)
+    def __init__(self, model, model_type, iteration_range):
+        super().__init__(model, model_type, iteration_range)
 
-    def parse(self, iteration_range: Tuple[int,int], X):
+    def parse(self, iteration_range: Tuple[int, int]):
         parsed_info = self._parse_binary(self.original_model.save_raw().lstrip(b'binf'))
         self.max_depth = parsed_info['max_depth']
         self.n_features = parsed_info['n_features']
@@ -76,7 +76,7 @@ class XGBoostParser(TreeEnsembleParser):
         self.trees = self._get_trees(parsed_info, self.iteration_range, self.n_trees, self.prediction_dim)
 
         # check there is no error in parsing by making predictions
-        #self._check_parsing_with_leaf_predictions(X)
+        #self._check_parsing_with_leaf_predictions(X) # need to put this elsewhere
 
     @staticmethod
     def _parse_binary(buf):
@@ -267,9 +267,9 @@ class XGBoostParser(TreeEnsembleParser):
         return np.array(leaf_indexes, dtype=np.float32)
 
     @staticmethod
-    def add_feature_contribs(feature_contribs, feature_contribs_tree, i, prediction_dim, type):
+    def add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
         if type in ['mean', 'mean_norm']:
-            feature_contribs[:, (i % prediction_dim)] += feature_contribs_tree[:, 0]
+            drift_values[:, (i % prediction_dim)] += drift_values_tree[:, 0]
         elif type == 'node_size':
-            feature_contribs += feature_contribs_tree
-        return feature_contribs
+            drift_values += drift_values_tree
+        return drift_values
