@@ -18,6 +18,7 @@ shap = "*"
 catboost = "*"
 pweave = "*"
 build = "*"
+twine = "*"
 
 [requires]
 python_version = "3.9"

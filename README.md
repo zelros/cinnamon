@@ -70,6 +70,14 @@ where we voluntarily introduce some data drift.
 >>> drift_explainer.plot_prediction_drift(bins=15)
 ```
 
+<p align="center">
+  <img height="240px" src="doc/img/plot_prediction_drift.png" alt="plot_prediction_drift">
+</p>
+
+We can see on this graph that because of the data drift we introduced in validation 
+data the distribution of predictions are different (they do not overlap well). We 
+can also compute the corresponding drift metrics:
+
 ```python
 # Corresponding metrics
 >>> drift_explainer.get_prediction_drift()
@@ -78,9 +86,10 @@ where we voluntarily introduce some data drift.
   'kolmogorov_smirnov': KstestResult(statistic=0.2913775225333014, pvalue=0.00013914094110123454)}]
 ```
 
-<p align="center">
-  <img height="80px" src="doc/img/plot_prediction_drift.png" alt="plot_prediction_drift">
-</p>
+Comparing the distributions of predictions for two dataset is one of the main 
+indicator we use in order to detect data drift. The two other indicators are:
+- distribution of the target (see `get_target_drift`)
+- performance metrics (see `get_performance_metrics_drift`)
 
 ### Explain data drift by computing the drift values
 Drift values can be thought as equivalent of feature importance but in terms of data drift.
@@ -91,7 +100,7 @@ Drift values can be thought as equivalent of feature importance but in terms of 
 ```
 
 <p align="center">
-  <img height="80px" src="doc/img/plot_drift_values.png" alt="plot_drift_values">
+  <img height="240px" src="doc/img/plot_drift_values.png" alt="plot_drift_values">
 </p>
 
 See "important notes" below to explore all the functionalities of CinnaMon.

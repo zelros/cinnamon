@@ -22,7 +22,7 @@ setup(
         "Topic :: Software Development",
         "Topic :: Scientific/Engineering",
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: BDS License",
+        "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
     ],
     package_dir={"": "src"},
