@@ -160,11 +160,11 @@ def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weig
 
 
 def plot_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array=None, sample_weights2: np.array=None,
-                   title=None, figsize=(7,5)):
+                   title=None, figsize=(7,5), bins=10):
     #distrib = compute_distribution_num(a1, a2, sample_weights1, sample_weights2)
     fig, ax = plt.subplots(figsize=figsize)
-    ax.hist(a1, bins=100, density=True, weights=sample_weights1, alpha=0.3)
-    ax.hist(a2, bins=100, density=True, weights=sample_weights2, alpha=0.3)
+    ax.hist(a1, bins=bins, density=True, weights=sample_weights1, alpha=0.3)
+    ax.hist(a2, bins=bins, density=True, weights=sample_weights2, alpha=0.3)
     ax.legend(['Dataset 1', 'Dataset 2'])
     plt.title(title)
     plt.show()

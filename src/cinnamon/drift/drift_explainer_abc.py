@@ -2,10 +2,9 @@ import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from typing import List
+from typing import List, Tuple, Union
 
 from .drift_utils import compute_drift_cat, compute_drift_num, plot_drift_cat, plot_drift_num
-from ..report.drift_report_generator import DriftReportGenerator
 
 logging.basicConfig(format='%(levelname)s:%(asctime)s - (%(pathname)s) %(message)s', level=logging.INFO)
 
@@ -23,18 +22,15 @@ class DriftExplainerABC:
         self.n_features = None
         self.task = None
 
-        # usefull for the report when I export the dataset (may not be usefull if I stock only the necessary info
-        # to make the plot
-        self.X1 = None  # same
-        self.X2 = None  # same
-        self.sample_weights1 = None  # same
-        self.sample_weights2 = None  # same
-        self.y1 = None  # same
-        self.y2 = None  # same
+        self.X1 = None
+        self.X2 = None
+        self.sample_weights1 = None
+        self.sample_weights2 = None
+        self.y1 = None
+        self.y2 = None
 
     @staticmethod
     def _compute_feature_drifts(X1, X2, n_features, cat_feature_indices, sample_weights1, sample_weights2) -> List[dict]:
-        #DriftExplainer.logger.info('Evaluate univariate drift of each feature')
         feature_drifts = []
         for i in range(n_features):
             if i in cat_feature_indices:
@@ -46,7 +42,27 @@ class DriftExplainerABC:
             feature_drifts.append(feature_drift)
         return feature_drifts
 
-    def get_target_drift(self):
+    def get_target_drift(self) -> dict:
+        """
+        Compute drift measures for the labels y.
+
+        For classification :
+        - Wasserstein distance
+        - Result of Chi2 2 sample test
+
+        For regression:
+        - Difference of means
+        - Wasserstein distance
+        - Result of Kolmogorov 2 sample test
+
+        See the documentation in README for explanations about how it is computed,
+        especially the slide presentation.
+
+        Returns
+        -------
+        target_drift : dict
+            Dictionary of drift measures for the labels
+        """
         if self.target_drift is not None:
             return self.target_drift
 
@@ -63,7 +79,27 @@ class DriftExplainerABC:
     def _raise_no_target_error():
         raise ValueError('Either y1 or y2 was not passed in DriftExplainer.fit')
 
-    def plot_target_drift(self, max_n_cat: int = 20, figsize=(7, 5)):
+    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins: int = 10):
+        """
+        Plot distributions of labels in order to
+        visualize a potential drift of the target labels.
+
+        Parameters
+        ----------
+        max_n_cat : int (default=20)
+            For multiclass classification only. Maximum number of classes to
+            represent on the plot.
+
+        bins : int (default=100)
+            For regression only. "bins" parameter passed to matplotlib.pyplot.hist function.
+
+        figsize : Tuple[int, int] (default=(7, 5))
+            Graphic size passed to matplotlib
+
+        Returns
+        -------
+        None
+        """
         if self.y1 is None or self.y2 is None:
             raise ValueError('"y1" or "y2" argument was not passed to drift_explainer.fit method')
         if self.task == 'classification':
@@ -71,21 +107,97 @@ class DriftExplainerABC:
                            max_n_cat=max_n_cat, figsize=figsize)
         elif self.task == 'regression':
             plot_drift_num(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
-                           figsize=figsize)
+                           figsize=figsize, bins=bins)
 
     def get_feature_drifts(self) -> List[dict]:
+        """
+        Compute drift measures for all features in X.
+
+        For numerical features:
+        - Difference of means
+        - Wasserstein distance
+        - Result of Kolmogorov 2 sample test
+
+        For categorial features (not supported currently. No categorical
+        feature allowed):
+        - Wasserstein distance
+        - Result of Chi2 two sample test
+
+        See the documentation in README for explanations about how it is computed,
+        especially the slide presentation.
+
+        Returns
+        -------
+        feature_drift: List[dict]
+            List of dictionaries that each gives drift measures for a feature.
+        """
         if self.feature_drifts is None:
             self.feature_drifts = self._compute_feature_drifts(self.X1, self.X2, self.n_features, self.cat_feature_indices,
                                                                self.sample_weights1, self.sample_weights2)
         return self.feature_drifts
 
-    def get_feature_drift(self, feature) -> dict:
+    def get_feature_drift(self, feature: Union[int, str]) -> dict:
+        """
+        Compute drift measures for a given feature in X.
+
+        For numerical feature:
+        - Difference of means
+        - Wasserstein distance
+        - Result of Kolmogorov 2 sample test
+
+        For categorial feature (not supported currently. No categorical
+        feature allowed):
+        - Wasserstein distance
+        - Result of Chi2 two sample test
+
+        See the documentation in README for explanations about how it is computed,
+        especially the slide presentation.
+
+        Parameters
+        ----------
+        feature : Union[int, str] (default=20)
+            Either the column index of the name of the feature.
+
+        Returns
+        -------
+        feature_drift: dict
+            Dictionary of drift measures.
+        """
         if self.X1 is None:
             raise ValueError('You must call the fit method before calling "get_feature_drift"')
         feature_index, feature_name = self._check_feature_param(feature, self.feature_names)
         return self.get_feature_drifts()[feature_index]
 
-    def plot_feature_drift(self, feature, max_n_cat: int = 20, figsize=(7, 5), as_discrete=False):
+    def plot_feature_drift(self, feature: Union[int, str], max_n_cat: int = 20, figsize: Tuple[int, int]=(7, 5),
+                           as_discrete: bool = False, bins: int = 10):
+        """
+        Plot distributions of a given feature in order to
+        visualize a potential data drift of this feature.
+
+        Parameters
+        ----------
+        feature : Union[int, str]
+            Either the column index or the name of the feature.
+
+        max_n_cat : int (default=20)
+            Maximum number of classes to represent on the plot (used only for
+            categorical feature (not supported currently) or
+            if as_discrete == True
+
+        bins : int (default=100)
+            (numerical feature only) "bins" parameter passed to matplotlib.pyplot.hist function.
+
+        figsize : Tuple[int, int] (default=(7, 5))
+            Graphic size passed to matplotlib
+
+        as_discrete: bool (default=False)
+            If a numerical feature is discrete (has few unique values), consider
+            it discrete to make the plot.
+
+        Returns
+        -------
+        None
+        """
         if self.X1 is None:
             raise ValueError('You must call the fit method before calling "get_feature_drift"')
         feature_index, feature_name = self._check_feature_param(feature, self.feature_names)
@@ -95,7 +207,7 @@ class DriftExplainerABC:
                            figsize=figsize)
         else:
             plot_drift_num(self.X1.iloc[:,feature_index].values, self.X2.iloc[:,feature_index].values,
-                           self.sample_weights1, self.sample_weights2, title=feature_name, figsize=figsize)
+                           self.sample_weights1, self.sample_weights2, title=feature_name, figsize=figsize, bins=bins)
 
     def _plot_drift_values(self, drift_values: np.array, n: int, feature_names: List[str]):
         # threshold n if n > drift_values.shape[0]
@@ -117,7 +229,7 @@ class DriftExplainerABC:
             ax.barh(X + (n_dim-i-1)/(n_dim+1), ordered_drift_values[:n, i][::-1], height=1/(n_dim+1))
         ax.legend(legend_labels)
         ax.set_yticks(X + 1/(n_dim+1) * (n_dim-1)/2)
-        ax.set_yticklabels(ordered_names[:n][::-1])
+        ax.set_yticklabels(ordered_names[:n][::-1], fontsize=15)
         ax.set_xlabel('Drift values per feature', fontsize=15)
         plt.show()
 
@@ -133,13 +245,15 @@ class DriftExplainerABC:
         else:
             raise ValueError(f'{feature} should be either of type str or int')
 
+    """
     def generate_html_report(self, output_path, max_n_cat: int = 20):
         # TODO : not ready
-        DriftReportGenerator.generate(self, output_path, max_n_cat)
+        pass
 
     def update(self, new_X):
-        """usually new_X would update X2: the production X"""
+        '''usually new_X would update X2: the production X'''
         pass
+    """
 
     def _check_fit_arguments(self, X1, X2, y1, y2, sample_weights1, sample_weights2):
         self.sample_weights1 = self._check_sample_weights(sample_weights1, X1)

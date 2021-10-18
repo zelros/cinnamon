@@ -4,7 +4,6 @@ from .i_model_parser import IModelParser
 class ITreeEnsembleParser(IModelParser):
     def __init__(self):
         super().__init__()
-        self.iteration_range = None
         self.n_trees = None
         self.max_depth = None
         self.trees = None

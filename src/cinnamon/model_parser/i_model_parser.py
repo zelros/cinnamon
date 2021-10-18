@@ -13,6 +13,7 @@ class IModelParser:
         self.task = None
         self.class_names = None
         self.feature_names = None
+        self.iteration_range = None
 
     def parse(self, iteration_range: Tuple[int, int]):
         pass
