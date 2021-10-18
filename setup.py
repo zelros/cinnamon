@@ -14,7 +14,7 @@ setup(
     url="https://github.com/zelros/cinnamon",
     project_urls={
         "Source Code": "https://github.com/zelros/cinnamon",
-        "Bug Tracker": "https://github.com/pypa/sampleproject/issues",
+        "Bug Tracker": "https://github.com/zelros/cinnamon/issues",
     },
     classifiers=[
         "Intended Audience :: Science/Research",
