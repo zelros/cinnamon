@@ -12,4 +12,3 @@ save/
 dist/
 *.egg-info/
 RESEARCH.md
-requirements.dev.txt

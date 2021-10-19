@@ -6,8 +6,8 @@
 
 <p align="center">
   <!-- License -->
-  <a href="https://opensource.org/licenses/BSD-3-Clause">
-    <img src="https://img.shields.io/badge/License-BSD%203--Clause-blue.svg?style=flat-square" alt="bsd_3_license">
+  <a href="https://opensource.org/licenses/MIT">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT_license">
   </a>
 </p>
 
@@ -106,6 +106,8 @@ Drift values can be thought as equivalent of feature importance but in terms of 
 The feature `worst symmetry` is rightly identified as the one which contributes the most to 
 the data drift.
 
+### More
+
 See "notes" below to explore all the functionalities of CinnaMon.
 
 
@@ -143,4 +145,4 @@ Check out the [contribution](https://github.com/zelros/cinnamon/blob/master/CONT
 
 ## 📝 License
 
-CinnaMon is free and open-source software licensed under the [3-clause BSD license](https://github.com/zelros/cinnamon/blob/master/LICENSE).
+CinnaMon is free and open-source software licensed under the [MIT](https://github.com/zelros/cinnamon/blob/master/LICENSE).
