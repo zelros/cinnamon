@@ -103,7 +103,10 @@ Drift values can be thought as equivalent of feature importance but in terms of 
   <img height="240px" src="doc/img/plot_drift_values.png" alt="plot_drift_values">
 </p>
 
-See "important notes" below to explore all the functionalities of CinnaMon.
+The feature `worst symmetry` is rightly identified as the one which contributes the most to 
+the data drift.
+
+See "notes" below to explore all the functionalities of CinnaMon.
 
 
 ## 🛠 Installation
@@ -120,7 +123,7 @@ You can install the latest development version from GitHub as so:
 pip install git+https://github.com/zelros/cinnamon --upgrade
 ```
 
-## 🔗 Important notes
+## 🔗 Notes
 - The two main classes of CinnaMon are `ModelDriftExplainer` and `AdversarialDriftExplainer`
 - `ModelDriftExplainer` currently only support `XGBoost` models (both regression and classification
   are supported)
@@ -130,7 +133,7 @@ pip install git+https://github.com/zelros/cinnamon --upgrade
   - [Concept drift example with IEEE data](https://github.com/zelros/cinnamon/blob/master/examples/ieee_fraud_simulated_concept_drift_card6.ipynb)
     
   These two notebooks also go deeper in the topic of how to correct data drift, making use of `AdversarialDriftExplainer`
-- The most recent documentation of this work corresponds to the following [slides](!!!)
+- The most recent documentation of this work corresponds to the following [slides](https://docs.google.com/presentation/d/1EiuXU2A2wxK9e_UxjKNeNv9ra4IN8HOU/edit#slide=id.p1)
 - There is no formal documentation for CinnaMon but docstrings are up to date for the two main classes.
 
 
