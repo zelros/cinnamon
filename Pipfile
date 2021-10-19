@@ -4,19 +4,14 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-pandas = ">=1.2.4"
-scipy = "*"
-scikit-learn = "*"
-xgboost = "*"
+cinnamon = {path = './', editable = true}
 treelib = "*"
-numpy = "*"
 matplotlib = "*"
-
-[dev-packages]
 jupyter = "*"
-shap = "*"
 catboost = "*"
 pweave = "*"
+
+[dev-packages]
 build = "*"
 twine = "*"
 
