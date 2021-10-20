@@ -52,7 +52,7 @@ where we voluntarily introduce some data drift.
 >>> clf.fit(X=X_train, y=y_train, verbose=10)
 ```
 
-### Initialize ModelDriftExplainer and fit on train and validation data
+### Initialize ModelDriftExplainer and fit it on train and validation data
 
 ```python
 >>> from cinnamon.drift import ModelDriftExplainer
@@ -71,7 +71,7 @@ where we voluntarily introduce some data drift.
 ```
 
 <p align="center">
-  <img height="240px" src="doc/img/plot_prediction_drift.png" alt="plot_prediction_drift">
+  <img height="320px" src="doc/img/plot_prediction_drift.png" alt="plot_prediction_drift">
 </p>
 
 We can see on this graph that because of the data drift we introduced in validation 
@@ -86,7 +86,7 @@ can also compute the corresponding drift metrics:
   'kolmogorov_smirnov': KstestResult(statistic=0.2913775225333014, pvalue=0.00013914094110123454)}]
 ```
 
-Comparing the distributions of predictions for two dataset is one of the main 
+Comparing the distributions of predictions for two datasets is one of the main 
 indicator we use in order to detect data drift. The two other indicators are:
 - distribution of the target (see `get_target_drift`)
 - performance metrics (see `get_performance_metrics_drift`)
@@ -100,10 +100,10 @@ Drift values can be thought as equivalent of feature importance but in terms of 
 ```
 
 <p align="center">
-  <img height="240px" src="doc/img/plot_drift_values.png" alt="plot_drift_values">
+  <img height="320px" src="doc/img/plot_drift_values.png" alt="plot_drift_values">
 </p>
 
-The feature `worst symmetry` is rightly identified as the one which contributes the most to 
+Here the feature `worst symmetry` is rightly identified as the one which contributes the most to 
 the data drift.
 
 ### More
@@ -134,7 +134,7 @@ pip install git+https://github.com/zelros/cinnamon --upgrade
   - [Covariate shift example with IEEE data](https://github.com/zelros/cinnamon/blob/master/examples/ieee_fraud_simulated_covariate_shift_card6.ipynb)
   - [Concept drift example with IEEE data](https://github.com/zelros/cinnamon/blob/master/examples/ieee_fraud_simulated_concept_drift_card6.ipynb)
     
-  These two notebooks also go deeper in the topic of how to correct data drift, making use of `AdversarialDriftExplainer`
+  These two notebooks also go deeper into the topic of how to correct data drift, making use of `AdversarialDriftExplainer`
 - The most recent documentation of this work corresponds to the following [slides](https://docs.google.com/presentation/d/1EiuXU2A2wxK9e_UxjKNeNv9ra4IN8HOU/edit#slide=id.p1)
 - There is no formal documentation for CinnaMon but docstrings are up to date for the two main classes.
 
