@@ -3,11 +3,11 @@ import numpy as np
 from xgboost import XGBClassifier
 from sklearn.model_selection import KFold
 from typing import List, Tuple
-from .drift_explainer_abc import DriftExplainerABC
+from .abstract_drift_explainer import AbstractDriftExplainer
 from ..common.math_utils import threshold_array
 
 
-class AdversarialDriftExplainer(DriftExplainerABC):
+class AdversarialDriftExplainer(AbstractDriftExplainer):
     """
     Tool to study data drift between two datasets using a adversarial learning
     approach (i.e. training a classifier to discriminate between
@@ -273,12 +273,12 @@ class AdversarialDriftExplainer(DriftExplainerABC):
 
     @staticmethod
     def _get_cat_feature_indices():
-        # TODO: problem here with cat features...
+        # FIXME: problem here with cat features...
         return []
 
     @staticmethod
     def _get_class_names(task: str, y1, y2):
-        # TODO: problem here with feature names...
+        # FIXME: problem here with feature names...
         return []
 
     @staticmethod

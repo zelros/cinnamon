@@ -5,9 +5,9 @@ import numpy as np
 
 from .single_tree import BinaryTree
 from ..common.math_utils import threshold
+from ..common.constants import TreeBasedDriftValueType
 
-
-class TreeEnsembleParserABC(ITreeEnsembleParser):
+class AbstractTreeEnsembleParser(ITreeEnsembleParser):
 
     def __init__(self, model, model_type, iteration_range):
         super().__init__()
@@ -22,7 +22,6 @@ class TreeEnsembleParserABC(ITreeEnsembleParser):
         self.node_weights2 = self.get_node_weights(X2, sample_weights=sample_weights2)
         #self._check_drift_values_mean(X1, X2, sample_weights1, sample_weights2)
 
-    # TODO: make abstract class instead of this interface
     def get_predictions(self, X: pd.DataFrame, prediction_type: str) -> np.array:
         # return array of shape (nb. obs, nb. class) for multiclass and shape array of shape (nb. obs, )
         # for binary class and regression
@@ -95,7 +94,7 @@ class TreeEnsembleParserABC(ITreeEnsembleParser):
         else:
             mean_prediction_diff = np.sum(sample_weights2_norm[:, np.newaxis] * self.predict_raw(X2), axis=0) - \
                                    np.sum(sample_weights1_norm[:, np.newaxis] * self.predict_raw(X1), axis=0)
-        stat = abs(self.compute_tree_based_drift_values(type='mean').sum(axis=0) - mean_prediction_diff)
+        stat = abs(self.compute_tree_based_drift_values(type=TreeBasedDriftValueType.MEAN.value).sum(axis=0) - mean_prediction_diff)
         if any(stat > 10**(-3)):  # any works because difference is an array
             raise ValueError('Error in computation of feature contributions')
 
@@ -103,12 +102,13 @@ class TreeEnsembleParserABC(ITreeEnsembleParser):
         """
         :param node_weights1:
         :param node_weights2:
-        :param type: type: 'mean_norm', 'node_size', or 'wasserstein'
+        :param type: type: 'mean_norm', 'node_size', or 'mean'
         :return:
         """
-        if type == 'node_size':
+        if type == TreeBasedDriftValueType.NODE_SIZE.value:
             drift_values = np.zeros((self.n_features, 1))
-        elif type in ['mean', 'mean_norm']:
+        elif type in [TreeBasedDriftValueType.MEAN.value,
+                      TreeBasedDriftValueType.MEAN_NORM.value]:
             drift_values = np.zeros((self.n_features, self.prediction_dim))
         else:
             raise ValueError(f'Bad value for "type": {type}')
@@ -125,7 +125,7 @@ class TreeEnsembleParserABC(ITreeEnsembleParser):
     def plot_tree_drift(self, tree_idx: int, type: str, feature_names: List[str]):
         if self.node_weights1 is None:
             raise ValueError('You need to run drift_explainer.fit before calling plot_tree_drift')
-        if type not in ['node_size', 'mean_norm', 'mean']:
+        if type not in [e.value for e in TreeBasedDriftValueType]:
             raise ValueError(f'Bad value for "type"')
         else:
             self.trees[tree_idx].plot_drift(node_weights1=self.node_weights1[tree_idx],

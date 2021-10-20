@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Tuple
 
-from .drift_explainer_abc import DriftExplainerABC
+from .abstract_drift_explainer import AbstractDriftExplainer
 from ..model_parser.i_model_parser import IModelParser
 from .adversarial_drift_explainer import AdversarialDriftExplainer
 from ..model_parser.xgboost_parser import XGBoostParser
@@ -12,9 +12,9 @@ from .drift_utils import compute_drift_num, plot_drift_num
 from ..common.dev_utils import safe_isinstance
 from ..common.math_utils import (compute_classification_metrics,
                                  compute_regression_metrics)
+from ..common.constants import TreeBasedDriftValueType
 
-
-class ModelDriftExplainer(DriftExplainerABC):
+class ModelDriftExplainer(AbstractDriftExplainer):
     """
     Tool to study data drift between two datasets, in a context where "model" is
     used to make predictions.
@@ -84,8 +84,6 @@ class ModelDriftExplainer(DriftExplainerABC):
     sample_weights1, sample_weights2 : numpy arrays
         sample_weights1 and sample_weights2 arrays passed to the "fit" method.
     """
-
-    logger = logging.getLogger('ModelDriftExplainer')
 
     def __init__(self, model, iteration_range: Tuple[int, int] = None):
         super().__init__()
@@ -268,7 +266,7 @@ class ModelDriftExplainer(DriftExplainerABC):
         else:  # ranking
             raise NotImplementedError('No metrics currently implemented for ranking model')
 
-    def get_tree_based_drift_values(self, type: str = 'node_size') -> np.array:
+    def get_tree_based_drift_values(self, type: str = TreeBasedDriftValueType.NODE_SIZE.value) -> np.array:
         """
         Compute drift values using the tree structures present in the model.
 
@@ -292,7 +290,7 @@ class ModelDriftExplainer(DriftExplainerABC):
         """
         return self._model_parser.compute_tree_based_drift_values(type)
 
-    def plot_tree_based_drift_values(self, n: int = 10, type: str = 'node_size'):
+    def plot_tree_based_drift_values(self, n: int = 10, type: str = TreeBasedDriftValueType.NODE_SIZE.value):
         """
         Plot drift values computed using the tree structures present in the model.
 
@@ -352,7 +350,7 @@ class ModelDriftExplainer(DriftExplainerABC):
         print(drift_values)
         self._plot_drift_values(drift_values, n, self.feature_names)
 
-    def plot_tree_drift(self, tree_idx: int, type: str = 'node_size'):
+    def plot_tree_drift(self, tree_idx: int, type: str = TreeBasedDriftValueType.NODE_SIZE.value):
         """
         Plot the representation of a given tree in the model, to illustrate how
         drift values are computed.

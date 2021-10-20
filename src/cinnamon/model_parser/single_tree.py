@@ -1,6 +1,6 @@
 import numpy as np
 from treelib import Tree
-
+from ..common.constants import TreeBasedDriftValueType
 
 class BinaryTree:
     def __init__(self,
@@ -41,11 +41,11 @@ class BinaryTree:
     def _compute_split_contribs(self, node_weights1: np.array, node_weights2: np.array, type: str):
         node_weight_fractions1 = node_weights1 / node_weights1[0]
         node_weight_fractions2 = node_weights2 / node_weights2[0]
-        if type == 'mean_norm':
+        if type == TreeBasedDriftValueType.MEAN_NORM.value:
             return self._compute_split_contribs_mean_norm(node_weight_fractions1, node_weight_fractions2)
-        elif type == 'mean':
+        elif type == TreeBasedDriftValueType.MEAN.value:
             return self._compute_split_contribs_mean(node_weight_fractions1, node_weight_fractions2)
-        elif type == 'node_size':
+        elif type == TreeBasedDriftValueType.NODE_SIZE.value:
             return self._compute_split_contribs_node_size(node_weight_fractions1, node_weight_fractions2)
 
     def _compute_split_contribs_mean(self, node_weight_fractions1, node_weight_fractions2):

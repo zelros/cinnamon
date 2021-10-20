@@ -3,11 +3,11 @@ import pandas as pd
 from typing import Tuple
 from .single_tree import BinaryTree
 import xgboost
-from .tree_ensemble_parser import TreeEnsembleParserABC
+from .abstract_tree_ensemble_parser import AbstractTreeEnsembleParser
 import struct
 from packaging import version
 from scipy.special import logit
-
+from ..common.constants import TreeBasedDriftValueType
 
 class BinaryParser:
     def __init__(self, buf):
@@ -33,7 +33,7 @@ class BinaryParser:
         return val
 
 
-class XGBoostParser(TreeEnsembleParserABC):
+class XGBoostParser(AbstractTreeEnsembleParser):
     objective_task_map = {'reg:squarederror': 'regression',
                           'reg:squaredlogerror': 'regression',
                           'reg:logistic': 'regression',
@@ -239,7 +239,8 @@ class XGBoostParser(TreeEnsembleParserABC):
         return self.original_model.predict(xgboost.DMatrix(X), iteration_range=self.iteration_range)
 
     def predict_leaf_with_model_parser(self, X):
-        # TODO: common - maybe put in abstract class
+        # TODO: common - should be put in abstract class (but pbm there is a
+        # a small difference between XGBoostParser and CatboostParser
         def down(node_idx: int, i: int, tree: BinaryTree) -> int:
             '''
             Recursive function to get leaf of a given observation
@@ -268,8 +269,9 @@ class XGBoostParser(TreeEnsembleParserABC):
 
     @staticmethod
     def add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
-        if type in ['mean', 'mean_norm']:
+        if type in [TreeBasedDriftValueType.MEAN.value,
+                    TreeBasedDriftValueType.MEAN_NORM.value]:
             drift_values[:, (i % prediction_dim)] += drift_values_tree[:, 0]
-        elif type == 'node_size':
+        elif type == TreeBasedDriftValueType.NODE_SIZE.value:
             drift_values += drift_values_tree
         return drift_values

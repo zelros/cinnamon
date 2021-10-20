@@ -8,10 +8,12 @@ from .drift_utils import compute_drift_cat, compute_drift_num, plot_drift_cat, p
 
 logging.basicConfig(format='%(levelname)s:%(asctime)s - (%(pathname)s) %(message)s', level=logging.INFO)
 
+cinnamon_logger = logging.getLogger('Cinnamon')
 
-class DriftExplainerABC:
 
-    logger = logging.getLogger('DriftExplainer')
+class AbstractDriftExplainer:
+
+    logger = cinnamon_logger.getChild('DriftExplainer')
 
     def __init__(self):
         self.feature_drifts = None  # drift of each input feature of the model
@@ -63,7 +65,7 @@ class DriftExplainerABC:
         target_drift : dict
             Dictionary of drift measures for the labels
         """
-        if self.target_drift is not None:
+        if isinstance(self.target_drift, dict):
             return self.target_drift
 
         if self.y1 is None or self.y2 is None:
@@ -247,7 +249,7 @@ class DriftExplainerABC:
 
     """
     def generate_html_report(self, output_path, max_n_cat: int = 20):
-        # TODO : not ready
+        # FIXME : not ready
         pass
 
     def update(self, new_X):

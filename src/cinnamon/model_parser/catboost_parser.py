@@ -5,10 +5,10 @@ from .single_tree import BinaryTree
 import catboost
 import tempfile
 from typing import Tuple
-from .tree_ensemble_parser import TreeEnsembleParserABC
+from .abstract_tree_ensemble_parser import AbstractTreeEnsembleParser
 
 
-class CatBoostParser(TreeEnsembleParserABC):
+class CatBoostParser(AbstractTreeEnsembleParser):
     objective_task_map = {'RMSE': 'regression',
                           'Logloss':'binary_classification',
                           'CrossEntropy': 'binary_classification',  # TODO: make sure it predicts logits
@@ -107,7 +107,7 @@ class CatBoostParser(TreeEnsembleParserABC):
                     split_features_index.append(json_cb_model['features_info']['categorical_features'][elem.get('cat_feature_index')]['flat_feature_index'])
                     borders.append(elem['value'])
                 elif split_type == 'OnlineCtr':
-                    # TODO: afraid of the 0 bellow there could be more than 1 element ?
+                    # FIXME: afraid of the 0 bellow there could be more than 1 element ?
                     corresponding_cat_index = json_cb_model['features_info']['ctrs'][elem.get('ctr_target_border_idx')]['elements'][0]['cat_feature_index']
                     split_features_index.append(self.cat_feature_index_map[corresponding_cat_index])
                     borders.append(elem['border'])
@@ -171,7 +171,8 @@ class CatBoostParser(TreeEnsembleParserABC):
                                                      ntree_end=self.iteration_range[1])
 
     def predict_leaf_with_model_parser(self, X):
-        # TODO: réfléchir à ce qui peut être fait dans la class BinaryTree
+        # TODO: common - should be put in abstract class (but pbm there is a
+        # a small difference between XGBoostParser and CatboostParser
         def down(node_idx: int, i: int, tree: BinaryTree) -> int:
             '''
             Recursive function to get leaf of a given observation
@@ -200,7 +201,7 @@ class CatBoostParser(TreeEnsembleParserABC):
                     else:
                         return down(tree.children_left[node_idx], i, tree)
                 elif split_type == 'OnlineCtr':
-                    # TODO: handle OnlineCtr for Catboost
+                    # FIXME: handle OnlineCtr for Catboost
                     self._model_parser_error()
                 else:
                     self._model_parser_error()
