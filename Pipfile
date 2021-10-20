@@ -4,17 +4,16 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-catboost = "*"
-pandas = "==1.2.4"
-scipy = "*"
-scikit-learn = "*"
-xgboost = "*"
-pweave = "*"
+cinnamon = {path = './', editable = true}
 treelib = "*"
+matplotlib = "*"
+jupyter = "*"
+catboost = "*"
+pweave = "*"
 
 [dev-packages]
-jupyter = "*"
-shap = "*"
+build = "*"
+twine = "*"
 
 [requires]
 python_version = "3.9"
