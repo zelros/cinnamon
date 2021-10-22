@@ -138,4 +138,4 @@ Check out the [contribution](https://github.com/zelros/cinnamon/blob/master/CONT
 
 ## 📝 License
 
-CinnaMon is free and open-source software licensed under the [MIT](https://github.com/zelros/cinnamon/blob/master/LICENSE).
+CinnaMon is free and open-source software licensed under the [MIT](https://github.com/zelros/cinnamon/blob/master/LICENSE.txt).
