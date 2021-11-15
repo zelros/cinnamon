@@ -116,7 +116,7 @@ See "notes" below to explore all the functionalities of CinnaMon.
 CinnaMon is intended to work with **Python 3.9 or above**. Installation can be done with `pip`:
 
 ```sh
-pip install git+https://github.com/zelros/cinnamon --upgrade
+pip install cinnamon
 ```
 
 ## 🔗 Notes
