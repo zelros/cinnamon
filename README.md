@@ -129,8 +129,8 @@ pip install cinnamon
   - [Concept drift example with IEEE data](https://github.com/zelros/cinnamon/blob/master/examples/ieee_fraud_simulated_concept_drift_card6.ipynb)
     
   These two notebooks also go deeper into the topic of how to correct data drift, making use of `AdversarialDriftExplainer`
-- There is no formal documentation for CinnaMon but docstrings are up to date for the two main classes.
-
+- See also the [slide presentation](https://https://yohannlefaou.github.io/publications/2021-cinnamon/Detect_explain_and_correct_data_drift_in_a_machine_learning_system.pdf) of the CinnaMon library.
+- There is (yet) no formal documentation for CinnaMon but docstrings are up to date for the two main classes.
 
 ## 👍 Contributing
 
