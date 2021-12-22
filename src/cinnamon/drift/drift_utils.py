@@ -22,7 +22,7 @@ def compute_distribution_cat(a1: np.array, a2: np.array, sample_weights1=None, s
         # create category mapping to reducce number of categories
         cat_map = {}
         for i, cat in enumerate(sorted_cat):
-            if i < (max_n_cat-1):
+            if i < (max_n_cat - 1):
                 cat_map[cat] = cat
             else:
                 cat_map[cat] = 'other_cat_agg'
@@ -80,9 +80,9 @@ def chi2_test(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=
     distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2)
     contingency_table = pd.DataFrame({cat: pd.Series({'X1': distrib[cat][0] * len(a1), 'X2': distrib[cat][1] * len(a2)})
                                       for cat in distrib.keys()})
-    chi2_stat, p_value, dof, expected = chi2_contingency(contingency_table)
-    return {'chi2_stat': chi2_stat,
-            'p_value': p_value,
+    statistic, pvalue, dof, expected = chi2_contingency(contingency_table)
+    return {'statistic': statistic,
+            'pvalue': pvalue,
             'dof': dof,
             'contingency_table': contingency_table}
 
@@ -90,8 +90,11 @@ def chi2_test(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=
 def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
     if (sample_weights1 is None and sample_weights2 is None or
             np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
-        kolmogorov_smirnov = ks_2samp(a1, a2)
+        kolmogorov_smirnov_object = ks_2samp(a1, a2)
+        kolmogorov_smirnov = {'statistic': kolmogorov_smirnov_object.statistic,
+                              'pvalue': kolmogorov_smirnov_object.pvalue}
     else:
+        # 'ks_weighted' return a dictionnary with the good format
         kolmogorov_smirnov = ks_weighted(a1, a2, sample_weights1, sample_weights2)
     return {'mean_difference': compute_mean_diff(a1, a2, sample_weights1, sample_weights2),
             'wasserstein': wasserstein_distance(a1, a2, sample_weights1, sample_weights2),
@@ -110,8 +113,8 @@ def ks_weighted(data1, data2, wei1, wei2, alternative='two-sided'):
     wei1 = wei1[ix1]
     wei2 = wei2[ix2]
     data = np.concatenate([data1, data2])
-    cwei1 = np.hstack([0, np.cumsum(wei1)/sum(wei1)])
-    cwei2 = np.hstack([0, np.cumsum(wei2)/sum(wei2)])
+    cwei1 = np.hstack([0, np.cumsum(wei1) / sum(wei1)])
+    cwei2 = np.hstack([0, np.cumsum(wei2) / sum(wei2)])
     cdf1we = cwei1[np.searchsorted(data1, data, side='right')]
     cdf2we = cwei2[np.searchsorted(data2, data, side='right')]
     d = np.max(np.abs(cdf1we - cdf2we))
@@ -126,7 +129,7 @@ def ks_weighted(data1, data2, wei1, wei2, alternative='two-sided'):
         z = np.sqrt(en) * d
         # Use Hodges' suggested approximation Eqn 5.3
         # Requires m to be the larger of (n1, n2)
-        expt = -2 * z**2 - 2 * z * (m + 2*n)/np.sqrt(m*n*(m+n))/3.0
+        expt = -2 * z ** 2 - 2 * z * (m + 2 * n) / np.sqrt(m * n * (m + n)) / 3.0
         prob = np.exp(expt)
     return {'statistic': d, 'pvalue': prob}
 
@@ -138,17 +141,16 @@ def compute_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_w
 
 def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None, title=None,
                    max_n_cat: float = None, figsize=(10, 6)):
-
     # compute both distributions
     distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2, max_n_cat)
-    bar_height = np.array([v for v in distrib.values()]) # len(distrib) rows and 2 columns
+    bar_height = np.array([v for v in distrib.values()])  # len(distrib) rows and 2 columns
 
-    #plot
+    # plot
     index = np.arange(len(distrib))
     bar_width = 0.35
     fig, ax = plt.subplots(figsize=figsize)
     ax.bar(index, bar_height[:, 0], bar_width, label="Dataset 1")
-    ax.bar(index+bar_width, bar_height[:, 1], bar_width, label="Dataset 2")
+    ax.bar(index + bar_width, bar_height[:, 1], bar_width, label="Dataset 2")
 
     ax.set_xlabel('Category')
     ax.set_ylabel('Percentage')
@@ -159,9 +161,9 @@ def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weig
     plt.show()
 
 
-def plot_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array=None, sample_weights2: np.array=None,
-                   title=None, figsize=(7,5), bins=10):
-    #distrib = compute_distribution_num(a1, a2, sample_weights1, sample_weights2)
+def plot_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array = None, sample_weights2: np.array = None,
+                   title=None, figsize=(7, 5), bins=10):
+    # distrib = compute_distribution_num(a1, a2, sample_weights1, sample_weights2)
     fig, ax = plt.subplots(figsize=figsize)
     ax.hist(a1, bins=bins, density=True, weights=sample_weights1, alpha=0.3)
     ax.hist(a2, bins=bins, density=True, weights=sample_weights2, alpha=0.3)
