@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.stats import chi2_contingency, wasserstein_distance, ks_2samp, distributions
 import matplotlib.pyplot as plt
-
+from ..common.stat_utils import StatisticalTestResultBase, Chi2TestResult
 
 def compute_distribution_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None,
                              max_n_cat: int = None):
@@ -81,18 +81,15 @@ def chi2_test(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=
     contingency_table = pd.DataFrame({cat: pd.Series({'X1': distrib[cat][0] * len(a1), 'X2': distrib[cat][1] * len(a2)})
                                       for cat in distrib.keys()})
     statistic, pvalue, dof, expected = chi2_contingency(contingency_table)
-    return {'statistic': statistic,
-            'pvalue': pvalue,
-            'dof': dof,
-            'contingency_table': contingency_table}
+    return Chi2TestResult(statistic, pvalue, dof, contingency_table)
 
 
 def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
     if (sample_weights1 is None and sample_weights2 is None or
             np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
         kolmogorov_smirnov_object = ks_2samp(a1, a2)
-        kolmogorov_smirnov = {'statistic': kolmogorov_smirnov_object.statistic,
-                              'pvalue': kolmogorov_smirnov_object.pvalue}
+        kolmogorov_smirnov = StatisticalTestResultBase(statistic=kolmogorov_smirnov_object.statistic,
+                                                       pvalue=kolmogorov_smirnov_object.pvalue)
     else:
         # 'ks_weighted' return a dictionnary with the good format
         kolmogorov_smirnov = ks_weighted(a1, a2, sample_weights1, sample_weights2)
@@ -131,7 +128,7 @@ def ks_weighted(data1, data2, wei1, wei2, alternative='two-sided'):
         # Requires m to be the larger of (n1, n2)
         expt = -2 * z ** 2 - 2 * z * (m + 2 * n) / np.sqrt(m * n * (m + n)) / 3.0
         prob = np.exp(expt)
-    return {'statistic': d, 'pvalue': prob}
+    return StatisticalTestResultBase(statistic=d, pvalue=prob)
 
 
 def compute_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
