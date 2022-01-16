@@ -6,9 +6,10 @@ models/
 data/
 .DS_Store
 figures/
-src/__pycache__/
+*/__pycache__/
 save/
 *_old*
 dist/
 *.egg-info/
 RESEARCH.md
+build/

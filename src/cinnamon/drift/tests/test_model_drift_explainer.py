@@ -339,7 +339,7 @@ def test_breast_cancer_xgboost_XGBClassifier():
                         max_depth=6,
                         use_label_encoder=False,
                         seed=RANDOM_SEED)
-    clf.fit(X=X_train, y=y_train, eval_set=[(X_valid, y_valid)], early_stopping_rounds=20, verbose=10)
+    clf.fit(X=X_train, y=y_train, eval_set=[(X_valid, y_valid)], early_stopping_rounds=20, verbose=0)
     drift_explainer = ModelDriftExplainer(clf)
     drift_explainer.fit(X1=X_train, X2=X_valid, y1=y_train, y2=y_valid)
 
@@ -361,7 +361,7 @@ def test_breast_cancer_xgboost_XGBClassifier():
                                                   'chi2_test': Chi2TestResult(statistic=0.0,
                                                                               pvalue=1.0, dof=1,
                                                                               contingency_table=pd.DataFrame([[148.0, 250.0], [64.0, 107.0]],
-                                                                                                             index=['X1', 'X2'], columns=[0, 1]))}
+                                                                                                             index=['X1', 'X2'], columns=['0', '1']))}
 
     # performance_metrics_drift
     assert drift_explainer.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.013343524769294877},
@@ -786,4 +786,174 @@ def test_breast_cancer_xgboost_XGBClassifier():
                                              'worst fractal dimension']
     assert drift_explainer.iteration_range == (0, 146)
     assert drift_explainer.n_features == 30
+    assert drift_explainer.task == 'classification'
+
+
+def test_iris_xgboost_XGBClassifier():
+    dataset = datasets.load_iris()
+    X = pd.DataFrame(dataset.data, columns=dataset.feature_names)
+    y = dataset.target
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=RANDOM_SEED)
+    clf = XGBClassifier(n_estimators=1000,
+                        booster="gbtree",
+                        objective="binary:logistic",
+                        learning_rate=0.05,
+                        max_depth=6,
+                        use_label_encoder=False,
+                        seed=RANDOM_SEED)
+    clf.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=20, verbose=0)
+    drift_explainer = ModelDriftExplainer(clf)
+    drift_explainer.fit(X1=X_train, X2=X_test, y1=y_train, y2=y_test)
+
+    # prediction drift "raw"
+    assert drift_explainer.get_prediction_drift() == [{'mean_difference': 0.33904417620764843,
+                                                       'wasserstein': 0.3390441762076484,
+                                                       'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.06349206349206349, pvalue=0.9987212484986797)},
+                                                      {'mean_difference': 0.3479284484826383,
+                                                       'wasserstein': 0.3566064995077869,
+                                                       'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.1365079365079365, pvalue=0.5571746191565534)},
+                                                      {'mean_difference': -0.6179708909184214,
+                                                       'wasserstein': 0.6183046163784134,
+                                                       'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.17142857142857143, pvalue=0.2821678346768163)}]
+
+    # prediction drift "proba"
+    assert drift_explainer.get_prediction_drift(prediction_type='proba') == [{'mean_difference': 0.06179329878133205,
+                                                                              'wasserstein': 0.06183055994795665,
+                                                                              'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.1111111111111111, pvalue=0.793799989988573)},
+                                                                             {'mean_difference': 0.08402968007065947,
+                                                                              'wasserstein': 0.0844271551403735,
+                                                                              'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.10793650793650794, pvalue=0.8205934119780005)},
+                                                                             {'mean_difference': -0.1458229802755846,
+                                                                              'wasserstein': 0.14582381487365756,
+                                                                              'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.17142857142857143, pvalue=0.2821678346768163)}]
+
+    # target drift
+    assert drift_explainer.get_target_drift() == {'wasserstein': 0.09523809523809523,
+                                                  'chi2_test': Chi2TestResult(statistic=1.3333333333333333,
+                                                                              pvalue=0.5134171190325922,
+                                                                              dof=2,
+                                                                              contingency_table=pd.DataFrame([[33.0, 34.0, 38.0], [17.0, 16.0, 12.0]],
+                                                                                                             index=['X1', 'X2'], columns=['0', '1', '2']))}
+
+    # performance_metrics_drift
+    assert drift_explainer.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.03573701255733058},
+                                                               'dataset 2': {'log_loss': 0.1726300963304109}}
+
+
+    # tree_based_drift_values "node_size"
+    assert_allclose(drift_explainer.get_tree_based_drift_values(type='node_size'),
+                    np.array([[ 2.24101843],
+                              [ 4.95002698],
+                              [18.68081445],
+                              [29.91475275]]),
+                    atol=NUMPY_atol)
+
+    # tree_based_drift_values "mean"
+    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean'),
+                    np.array([[ 0.        ,  0.18602155, -0.02790859],
+                              [ 0.        , -0.00947687, -0.06789058],
+                              [ 0.33904412,  0.03495713, -0.26869759],
+                              [ 0.        ,  0.13642661, -0.25347424]]),
+                    atol=NUMPY_atol)
+
+    # tree_based_drift_values "mean_norm"
+    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean_norm'),
+                    np.array([[ 0.        ,  0.02024519,  0.00498964],
+                              [ 0.        , -0.01272634,  0.02345512],
+                              [ 0.33904412, -0.11905975,  0.0417556 ],
+                              [ 0.        ,  0.08622845, -0.1998876 ]]),
+                    atol=NUMPY_atol)
+
+    # feature_drift - argument as a string
+    assert drift_explainer.get_feature_drift('petal width (cm)') == {'mean_difference': -0.16412698412698457,
+                                                                   'wasserstein': 0.16412698412698412,
+                                                                   'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.17142857142857143, pvalue=0.2821678346768163)}
+
+    # feature_drift - argument as integer
+    assert drift_explainer.get_feature_drift(2) == {'mean_difference': -0.2765079365079357,
+                                                    'wasserstein': 0.2777777777777778,
+                                                    'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.1523809523809524, pvalue=0.41885114043708227)}
+
+    # all feature drifts
+    assert drift_explainer.get_feature_drifts() == [{'mean_difference': -0.18571428571428505,
+                                                     'wasserstein': 0.19968253968253974,
+                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.16507936507936508, pvalue=0.3237613427576299)},
+                                                    {'mean_difference': -0.08825396825396803,
+                                                     'wasserstein': 0.1301587301587301,
+                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.14285714285714285, pvalue=0.499646880472137)},
+                                                    {'mean_difference': -0.2765079365079357,
+                                                     'wasserstein': 0.2777777777777778,
+                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.1523809523809524, pvalue=0.41885114043708227)},
+                                                    {'mean_difference': -0.16412698412698457,
+                                                     'wasserstein': 0.16412698412698412,
+                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.17142857142857143, pvalue=0.2821678346768163)}]
+
+    # tree_based_correction_weights with default params
+    assert_allclose(drift_explainer.get_tree_based_correction_weights(),
+                    np.array([1.51963273, 0.69958012, 0.68959361, 1.14262557, 1.14070412,
+                              0.75359899, 1.22202441, 0.71032805, 1.22202441, 1.13668373,
+                              1.23114095, 1.13668373, 0.58041605, 0.9425652 , 1.22202441,
+                              1.22202441, 0.71073325, 1.22202441, 1.14242865, 1.14070412,
+                              0.69080126, 1.06257767, 1.23114095, 1.22202441, 0.70189534,
+                              1.14495092, 0.71073325, 0.69080126, 1.13668373, 0.7200171 ,
+                              1.23114095, 1.22202441, 1.22202441, 0.69088332, 1.19747109,
+                              1.15991488, 1.14242865, 1.22202441, 0.68959361, 1.05799033,
+                              1.16698598, 0.55307216, 1.18901321, 1.4081631 , 0.70229573,
+                              1.23114095, 1.05799033, 0.69080126, 1.22202441, 0.70928591,
+                              1.14376723, 1.14493691, 1.22202441, 1.20825593, 0.69744213,
+                              0.71538202, 1.22202441, 1.14493691, 1.16840963, 1.22202441,
+                              1.19747109, 1.13840217, 1.13668373, 0.71028659, 1.22202441,
+                              0.77157863, 0.70928591, 1.19747109, 1.22202441, 1.23767279,
+                              0.67995558, 1.24226541, 0.40363958, 0.68959361, 1.16412789,
+                              1.19747109, 0.62371472, 1.23767279, 0.71073325, 1.22202441,
+                              0.69419428, 0.69088332, 1.34032219, 0.79529356, 1.20011855,
+                              1.22202441, 1.16840963, 0.69080126, 0.68321417, 1.23767279,
+                              1.22202441, 0.70189534, 1.19747109, 0.36267417, 0.70928591,
+                              0.89733431, 1.22202441, 1.071889  , 1.22202441, 1.13840217,
+                              0.69080126, 0.7157901 , 0.89733431, 1.04908937, 0.71028659]),
+                    atol=NUMPY_atol)
+
+    # tree_based_correction_weights with "max_depth = 1"
+    assert_allclose(drift_explainer.get_tree_based_correction_weights(max_depth=1),
+                    np.array([0.93952122, 0.82672536, 0.82205507, 1.02474169, 1.02474169,
+                              0.84271961, 1.18403958, 0.82663457, 1.18403958, 1.02474169,
+                              1.19063563, 1.02474169, 0.83510573, 0.84141768, 1.18403958,
+                              1.18403958, 0.82663457, 1.18403958, 1.02474169, 1.02474169,
+                              0.82205507, 1.04468159, 1.19063563, 1.18403958, 0.82672536,
+                              1.0482974 , 0.82663457, 0.82205507, 1.02474169, 0.82663457,
+                              1.19063563, 1.18403958, 1.18403958, 0.82663457, 1.18403958,
+                              1.04456687, 1.02474169, 1.18403958, 0.82205507, 0.97290171,
+                              1.02462916, 0.85600429, 0.97300855, 0.95780286, 0.82672536,
+                              1.19063563, 0.97290171, 0.82205507, 1.18403958, 0.82663457,
+                              1.02462916, 1.04468159, 1.18403958, 0.97290171, 0.82663457,
+                              0.82663457, 1.18403958, 1.04468159, 1.02462916, 1.18403958,
+                              1.18403958, 1.02474169, 1.02474169, 0.82663457, 1.18403958,
+                              0.83519744, 0.82663457, 1.18403958, 1.18403958, 1.19063563,
+                              0.82663457, 1.21380356, 0.85600429, 0.82205507, 1.02462916,
+                              1.18403958, 0.88836458, 1.19063563, 0.82663457, 1.18403958,
+                              0.82663457, 0.82663457, 0.94914921, 0.83510573, 0.97290171,
+                              1.18403958, 1.02462916, 0.82205507, 0.82663457, 1.19063563,
+                              1.18403958, 0.82672536, 1.18403958, 0.85609829, 0.82663457,
+                              1.0482974 , 1.18403958, 1.04456687, 1.18403958, 1.02474169,
+                              0.82205507, 0.82663457, 1.0482974 , 0.96751189, 0.82663457]),
+                    atol=NUMPY_atol)
+
+    # sample_weights1
+    assert_allclose(drift_explainer.sample_weights1[:5],
+                    np.array([1., 1., 1., 1., 1.]),
+                    atol=NUMPY_atol)
+
+    # sample_weights2
+    assert_allclose(drift_explainer.sample_weights2[:5],
+                    np.array([1., 1., 1., 1., 1.]),
+                    atol=NUMPY_atol)
+
+    assert drift_explainer.cat_feature_indices == []
+    assert drift_explainer.class_names == ['0', '1', '2']
+    assert drift_explainer.feature_names == ['sepal length (cm)',
+                                             'sepal width (cm)',
+                                             'petal length (cm)',
+                                             'petal width (cm)']
+    assert drift_explainer.iteration_range == (0, 117)
+    assert drift_explainer.n_features == 4
     assert drift_explainer.task == 'classification'
