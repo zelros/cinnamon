@@ -273,12 +273,12 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
 
     @staticmethod
     def _get_cat_feature_indices():
-        # FIXME: problem here with cat features...
+        # FIXME: problem here with cat features... and add it to the test
         return []
 
     @staticmethod
     def _get_class_names(task: str, y1, y2):
-        # FIXME: problem here with feature names...
+        # FIXME: problem here with feature names... and add it to the test
         return []
 
     @staticmethod
