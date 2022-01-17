@@ -4,3 +4,4 @@ models/
 catboost_info
 data/
 *pending.ipynb
+test*.ipynb

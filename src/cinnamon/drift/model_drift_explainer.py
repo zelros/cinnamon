@@ -10,7 +10,7 @@ from ..model_parser.xgboost_parser import XGBoostParser
 
 from .drift_utils import compute_drift_num, plot_drift_num
 from ..common.dev_utils import safe_isinstance
-from ..common.math_utils import (compute_classification_metrics,
+from ..common.stat_utils import (compute_classification_metrics,
                                  compute_regression_metrics)
 from ..common.constants import TreeBasedDriftValueType
 
