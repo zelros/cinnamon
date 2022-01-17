@@ -2,6 +2,9 @@ import numpy as np
 import pandas as pd
 from scipy.stats import chi2_contingency, wasserstein_distance, ks_2samp, distributions
 import matplotlib.pyplot as plt
+from ..common.stat_utils import BaseStatisticalTestResult, Chi2TestResult
+from dataclasses import dataclass
+from typing import List
 
 
 def compute_distribution_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None,
@@ -22,7 +25,7 @@ def compute_distribution_cat(a1: np.array, a2: np.array, sample_weights1=None, s
         # create category mapping to reducce number of categories
         cat_map = {}
         for i, cat in enumerate(sorted_cat):
-            if i < (max_n_cat-1):
+            if i < (max_n_cat - 1):
                 cat_map[cat] = cat
             else:
                 cat_map[cat] = 'other_cat_agg'
@@ -80,23 +83,22 @@ def chi2_test(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=
     distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2)
     contingency_table = pd.DataFrame({cat: pd.Series({'X1': distrib[cat][0] * len(a1), 'X2': distrib[cat][1] * len(a2)})
                                       for cat in distrib.keys()})
-    chi2_stat, p_value, dof, expected = chi2_contingency(contingency_table)
-    return {'chi2_stat': chi2_stat,
-            'p_value': p_value,
-            'dof': dof,
-            'contingency_table': contingency_table}
+    statistic, pvalue, dof, expected = chi2_contingency(contingency_table)
+    return Chi2TestResult(statistic, pvalue, dof, contingency_table)
 
 
 def compute_drift_num(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
     if (sample_weights1 is None and sample_weights2 is None or
             np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
-        kolmogorov_smirnov = ks_2samp(a1, a2)
+        ks_test_object = ks_2samp(a1, a2)
+        ks_test = BaseStatisticalTestResult(statistic=ks_test_object.statistic,
+                                                       pvalue=ks_test_object.pvalue)
     else:
-        kolmogorov_smirnov = ks_weighted(a1, a2, sample_weights1, sample_weights2)
-    return {'mean_difference': compute_mean_diff(a1, a2, sample_weights1, sample_weights2),
-            'wasserstein': wasserstein_distance(a1, a2, sample_weights1, sample_weights2),
-            'kolmogorov_smirnov': kolmogorov_smirnov}
-
+        # 'ks_weighted' return a dictionnary with the good format
+        ks_test = ks_weighted(a1, a2, sample_weights1, sample_weights2)
+    return DriftMetricsNum(mean_difference=compute_mean_diff(a1, a2, sample_weights1, sample_weights2),
+                           wasserstein=wasserstein_distance(a1, a2, sample_weights1, sample_weights2),
+                           ks_test=ks_test)
 
 def ks_weighted(data1, data2, wei1, wei2, alternative='two-sided'):
     # kolmogorov smirnov test for weighted samples
@@ -110,8 +112,8 @@ def ks_weighted(data1, data2, wei1, wei2, alternative='two-sided'):
     wei1 = wei1[ix1]
     wei2 = wei2[ix2]
     data = np.concatenate([data1, data2])
-    cwei1 = np.hstack([0, np.cumsum(wei1)/sum(wei1)])
-    cwei2 = np.hstack([0, np.cumsum(wei2)/sum(wei2)])
+    cwei1 = np.hstack([0, np.cumsum(wei1) / sum(wei1)])
+    cwei2 = np.hstack([0, np.cumsum(wei2) / sum(wei2)])
     cdf1we = cwei1[np.searchsorted(data1, data, side='right')]
     cdf2we = cwei2[np.searchsorted(data2, data, side='right')]
     d = np.max(np.abs(cdf1we - cdf2we))
@@ -126,29 +128,28 @@ def ks_weighted(data1, data2, wei1, wei2, alternative='two-sided'):
         z = np.sqrt(en) * d
         # Use Hodges' suggested approximation Eqn 5.3
         # Requires m to be the larger of (n1, n2)
-        expt = -2 * z**2 - 2 * z * (m + 2*n)/np.sqrt(m*n*(m+n))/3.0
+        expt = -2 * z ** 2 - 2 * z * (m + 2 * n) / np.sqrt(m * n * (m + n)) / 3.0
         prob = np.exp(expt)
-    return {'statistic': d, 'pvalue': prob}
+    return BaseStatisticalTestResult(statistic=d, pvalue=prob)
 
 
 def compute_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
-    return {'wasserstein': wasserstein_distance_for_cat(a1, a2, sample_weights1, sample_weights2),
-            'chi2_test': chi2_test(a1, a2, sample_weights1, sample_weights2)}
+    return DriftMetricsCat(wasserstein=wasserstein_distance_for_cat(a1, a2, sample_weights1, sample_weights2),
+                           chi2_test=chi2_test(a1, a2, sample_weights1, sample_weights2))
 
 
 def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None, title=None,
                    max_n_cat: float = None, figsize=(10, 6)):
-
     # compute both distributions
     distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2, max_n_cat)
-    bar_height = np.array([v for v in distrib.values()]) # len(distrib) rows and 2 columns
+    bar_height = np.array([v for v in distrib.values()])  # len(distrib) rows and 2 columns
 
-    #plot
+    # plot
     index = np.arange(len(distrib))
     bar_width = 0.35
     fig, ax = plt.subplots(figsize=figsize)
     ax.bar(index, bar_height[:, 0], bar_width, label="Dataset 1")
-    ax.bar(index+bar_width, bar_height[:, 1], bar_width, label="Dataset 2")
+    ax.bar(index + bar_width, bar_height[:, 1], bar_width, label="Dataset 2")
 
     ax.set_xlabel('Category')
     ax.set_ylabel('Percentage')
@@ -159,9 +160,9 @@ def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weig
     plt.show()
 
 
-def plot_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array=None, sample_weights2: np.array=None,
-                   title=None, figsize=(7,5), bins=10):
-    #distrib = compute_distribution_num(a1, a2, sample_weights1, sample_weights2)
+def plot_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array = None, sample_weights2: np.array = None,
+                   title=None, figsize=(7, 5), bins=10):
+    # distrib = compute_distribution_num(a1, a2, sample_weights1, sample_weights2)
     fig, ax = plt.subplots(figsize=figsize)
     ax.hist(a1, bins=bins, density=True, weights=sample_weights1, alpha=0.3)
     ax.hist(a2, bins=bins, density=True, weights=sample_weights2, alpha=0.3)
@@ -172,3 +173,40 @@ def plot_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array=None, s
 
 def compute_distribution_num(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
     pass
+
+@dataclass
+class AbstractDriftMetrics:
+    pass
+
+@dataclass
+class DriftMetricsNum(AbstractDriftMetrics):
+    mean_difference: float
+    wasserstein: float
+    ks_test: BaseStatisticalTestResult
+
+    def assert_equal(self, other):
+        assert isinstance(other, DriftMetricsNum)
+        assert self.mean_difference == other.mean_difference
+        assert self.wasserstein == other.wasserstein
+        self.ks_test.assert_equal(other.ks_test)
+
+@dataclass
+class DriftMetricsCat(AbstractDriftMetrics):
+    wasserstein: float
+    chi2_test: Chi2TestResult
+
+    def assert_equal(self, other):
+        assert isinstance(other, DriftMetricsCat)
+        assert self.wasserstein == other.wasserstein
+        self.chi2_test.assert_equal(other.chi2_test)
+
+
+def assert_drift_metrics_equal(drift_metrics1: AbstractDriftMetrics,
+                               drift_metrics2: AbstractDriftMetrics):
+    drift_metrics1.assert_equal(drift_metrics2)
+
+
+def assert_drift_metrics_list_equal(l1: List[AbstractDriftMetrics], l2: List[AbstractDriftMetrics]):
+    assert len(l1) == len(l2)
+    for i in range(len(l1)):
+        assert_drift_metrics_equal(l1[i], l2[i])

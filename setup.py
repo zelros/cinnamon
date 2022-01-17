@@ -30,8 +30,8 @@ setup(
     license="MIT",
     python_requires=">=3.9",
     install_requires=["pandas>=1.2.4", "scipy>=1.7.1", "scikit-learn>=1.0", "xgboost>=1.4.2",
-                      "numpy>=1.21.2"],
-    extras_require={"graphs": ["matplotlib>=3.4.3", "treelib>=1.6.1"]},
+                      "numpy>=1.21.2", "matplotlib>=3.4.3", "treelib>=1.6.1"],
+    #extras_require={"graphs": ["matplotlib>=3.4.3", "treelib>=1.6.1"]},
     keywords=["data drift", "covariate shift", "concept drift", "monitoring",
               "adversarial learning", "machine learning"],
 )
