@@ -3,8 +3,10 @@ from numpy.testing import assert_allclose
 from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from xgboost import XGBRegressor, XGBClassifier
-from cinnamon.drift import ModelDriftExplainer, AdversarialDriftExplainer
-from cinnamon.common.stat_utils import StatisticalTestResultBase, Chi2TestResult
+from cinnamon.drift import ModelDriftExplainer
+from cinnamon.drift.drift_utils import (DriftMetricsNum, DriftMetricsCat, assert_drift_metrics_equal,
+                                        assert_drift_metrics_list_equal)
+from cinnamon.common.stat_utils import BaseStatisticalTestResult, Chi2TestResult
 
 
 RANDOM_SEED = 2021
@@ -28,15 +30,20 @@ def test_boston_xgboost_XGBRegressor():
     drift_explainer.fit(X_train, X_test, y_train, y_test)
 
     # prediction drift
-    assert drift_explainer.get_prediction_drift() == [{'mean_difference': -0.7907300941865429,
-                                                       'wasserstein': 1.0933355933457942,
-                                                       'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.053783823966696405,
-                                                                                                       pvalue=0.8977000230212033)}]
+    prediction_drift_ref = [DriftMetricsNum(mean_difference=-0.7907300941865429,
+                                            wasserstein=1.0933355933457942,
+                                            ks_test=BaseStatisticalTestResult(statistic=0.053783823966696405,
+                                                                              pvalue=0.8977000230212033))]
+    assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(),
+                                    prediction_drift_ref)
+
     # target drift
-    assert drift_explainer.get_target_drift() == {'mean_difference': -0.609240261671129,
-                                                  'wasserstein': 1.3178114778471604,
-                                                  'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07857567647933393,
-                                                                                                  pvalue=0.4968030078636394)}
+    assert_drift_metrics_equal(drift_explainer.get_target_drift(),
+                               DriftMetricsNum(mean_difference=-0.609240261671129,
+                                               wasserstein=1.3178114778471604,
+                                               ks_test=BaseStatisticalTestResult(statistic=0.07857567647933393,
+                                                                                 pvalue=0.4968030078636394)))
+
     # performance_metrics_drift
     assert drift_explainer.get_performance_metrics_drift() == {'dataset 1': {'mse': 0.2798235381304802,
                                                                              'explained_variance': 0.9969813455726874},
@@ -95,57 +102,35 @@ def test_boston_xgboost_XGBRegressor():
                     atol=NUMPY_atol)
 
     # feature_drift_LSTAT
-    assert drift_explainer.get_feature_drift('LSTAT') == {'mean_difference': 0.7378638864109419,
-                                                          'wasserstein': 0.8023078352661315,
-                                                          'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.08887154326494201,
-                                                                                                          pvalue=0.3452770147763923)}
+    assert_drift_metrics_equal(drift_explainer.get_feature_drift('LSTAT'),
+                               DriftMetricsNum(mean_difference=0.7378638864109419,
+                                                                         wasserstein=0.8023078352661315,
+                                                                         ks_test=BaseStatisticalTestResult(statistic=0.08887154326494201,
+                                                                                                           pvalue=0.3452770147763923)))
 
     # feature_drift_feature_0
-    assert drift_explainer.get_feature_drift(0) == {'mean_difference': -1.1253475613291695,
-                                                    'wasserstein': 1.1305975918079103,
-                                                    'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.0618123699078204,
-                                                                                                    pvalue=0.7813257636577198)}
+    assert_drift_metrics_equal(drift_explainer.get_feature_drift(0),
+                               DriftMetricsNum(mean_difference=-1.1253475613291695,
+                                                                   wasserstein=1.1305975918079103,
+                                                                   ks_test=BaseStatisticalTestResult(statistic=0.0618123699078204,
+                                                                                                     pvalue=0.7813257636577198)))
 
     # all feature drifts
-    assert drift_explainer.get_feature_drifts() == [{'mean_difference': -1.1253475613291695,
-                                                     'wasserstein': 1.1305975918079103,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.0618123699078204, pvalue=0.7813257636577198)},
-                                                    {'mean_difference': -0.7548691644365135,
-                                                     'wasserstein': 0.8747398156407966,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.02951234017246506, pvalue=0.9999448615410187)},
-                                                    {'mean_difference': -0.17914585191793364,
-                                                     'wasserstein': 0.7212444246208749,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07381801962533452, pvalue=0.5764298225321844)},
-                                                    {'mean_difference': 0.02337942313410645,
-                                                     'wasserstein': 0.02337942313410646,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.02337942313410645, pvalue=0.9999998980177341)},
-                                                    {'mean_difference': -0.010584444692238959,
-                                                     'wasserstein': 0.01748104742789176,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07296312815938151, pvalue=0.5907168134992118)},
-                                                    {'mean_difference': -0.015463871543265562,
-                                                     'wasserstein': 0.07063187630092177,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.056645851917930416, pvalue=0.86067051746252)},
-                                                    {'mean_difference': -0.5575044603033064,
-                                                     'wasserstein': 1.22835637823372,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.04114629794826048, pvalue=0.9894125780752614)},
-                                                    {'mean_difference': 0.12717342030924828,
-                                                     'wasserstein': 0.17319668822479928,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07244275944097532, pvalue=0.5998930415655818)},
-                                                    {'mean_difference': -0.28690900981266765,
-                                                     'wasserstein': 0.3868941421349984,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.03631430270591734, pvalue=0.9978241882813342)},
-                                                    {'mean_difference': -13.692387749033628,
-                                                     'wasserstein': 14.388492417484393,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.08039696699375558, pvalue=0.4679944796162433)},
-                                                    {'mean_difference': 0.20367603330359785,
-                                                     'wasserstein': 0.205839280404401,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.06322479928635147, pvalue=0.7594689122671989)},
-                                                    {'mean_difference': 6.062043190603617,
-                                                     'wasserstein': 6.4615822925958994,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.06341064525721082, pvalue=0.7559278097560319)},
-                                                    {'mean_difference': 0.7378638864109419,
-                                                     'wasserstein': 0.8023078352661315,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.08887154326494201, pvalue=0.3452770147763923)}]
+    feature_drifts_ref = [DriftMetricsNum(mean_difference=-1.1253475613291695, wasserstein=1.1305975918079103, ks_test=BaseStatisticalTestResult(statistic=0.0618123699078204, pvalue=0.7813257636577198)),
+                      DriftMetricsNum(mean_difference=-0.7548691644365135, wasserstein=0.8747398156407966, ks_test=BaseStatisticalTestResult(statistic=0.02951234017246506, pvalue=0.9999448615410187)),
+                      DriftMetricsNum(mean_difference=-0.17914585191793364, wasserstein=0.7212444246208749, ks_test=BaseStatisticalTestResult(statistic=0.07381801962533452, pvalue=0.5764298225321844)),
+                      DriftMetricsNum(mean_difference=0.02337942313410645, wasserstein=0.02337942313410646, ks_test=BaseStatisticalTestResult(statistic=0.02337942313410645, pvalue=0.9999998980177341)),
+                      DriftMetricsNum(mean_difference=-0.010584444692238959, wasserstein=0.01748104742789176, ks_test=BaseStatisticalTestResult(statistic=0.07296312815938151, pvalue=0.5907168134992118)),
+                      DriftMetricsNum(mean_difference=-0.015463871543265562, wasserstein=0.07063187630092177, ks_test=BaseStatisticalTestResult(statistic=0.056645851917930416, pvalue=0.86067051746252)),
+                      DriftMetricsNum(mean_difference=-0.5575044603033064, wasserstein=1.22835637823372, ks_test=BaseStatisticalTestResult(statistic=0.04114629794826048, pvalue=0.9894125780752614)),
+                      DriftMetricsNum(mean_difference=0.12717342030924828, wasserstein=0.17319668822479928, ks_test=BaseStatisticalTestResult(statistic=0.07244275944097532, pvalue=0.5998930415655818)),
+                      DriftMetricsNum(mean_difference=-0.28690900981266765, wasserstein=0.3868941421349984, ks_test=BaseStatisticalTestResult(statistic=0.03631430270591734, pvalue=0.9978241882813342)),
+                      DriftMetricsNum(mean_difference=-13.692387749033628, wasserstein=14.388492417484393, ks_test=BaseStatisticalTestResult(statistic=0.08039696699375558, pvalue=0.4679944796162433)),
+                      DriftMetricsNum(mean_difference=0.20367603330359785, wasserstein=0.205839280404401, ks_test=BaseStatisticalTestResult(statistic=0.06322479928635147, pvalue=0.7594689122671989)),
+                      DriftMetricsNum(mean_difference=6.062043190603617, wasserstein=6.4615822925958994, ks_test=BaseStatisticalTestResult(statistic=0.06341064525721082, pvalue=0.7559278097560319)),
+                      DriftMetricsNum(mean_difference=0.7378638864109419, wasserstein=0.8023078352661315, ks_test=BaseStatisticalTestResult(statistic=0.08887154326494201, pvalue=0.3452770147763923))]
+    assert_drift_metrics_list_equal(drift_explainer.get_feature_drifts(),
+                                    feature_drifts_ref)
 
     # tree_based_correction_weights with default params
     assert_allclose(drift_explainer.get_tree_based_correction_weights(),
@@ -344,24 +329,29 @@ def test_breast_cancer_xgboost_XGBClassifier():
     drift_explainer.fit(X1=X_train, X2=X_valid, y1=y_train, y2=y_valid)
 
     # prediction drift "raw"
-    assert drift_explainer.get_prediction_drift() == [{'mean_difference': 0.0018858597634534568,
-                                                       'wasserstein': 0.40122835384598343,
-                                                       'kolmogorov_smirnov':
-                                                           StatisticalTestResultBase(statistic=0.08661729701137265,
-                                                                                     pvalue=0.30851650924557306)}]
+    prediction_drift_ref = [DriftMetricsNum(mean_difference=0.0018858597634534568,
+                                            wasserstein=0.40122835384598343,
+                                            ks_test=BaseStatisticalTestResult(statistic=0.08661729701137265,
+                                                                              pvalue=0.30851650924557306))]
+    assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(),
+                                    prediction_drift_ref)
 
     # prediction drift "proba"
-    assert drift_explainer.get_prediction_drift(prediction_type='proba') == [{'mean_difference': 0.00845238602309173,
-                                                                              'wasserstein': 0.024145883189508617,
-                                                                              'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.08661729701137265,
-                                                                                                                              pvalue=0.30851650924557306)}]
+    prediction_drift_proba_ref = [DriftMetricsNum(mean_difference=0.00845238602309173,
+                                                  wasserstein=0.024145883189508617,
+                                                  ks_test=BaseStatisticalTestResult(statistic=0.08661729701137265,
+                                                                                    pvalue=0.30851650924557306))]
+    assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='proba'),
+                                    prediction_drift_proba_ref)
 
     # target drift
-    assert drift_explainer.get_target_drift() == {'wasserstein': 0.0024097093655411628,
-                                                  'chi2_test': Chi2TestResult(statistic=0.0,
-                                                                              pvalue=1.0, dof=1,
-                                                                              contingency_table=pd.DataFrame([[148.0, 250.0], [64.0, 107.0]],
-                                                                                                             index=['X1', 'X2'], columns=['0', '1']))}
+    assert_drift_metrics_equal(drift_explainer.get_target_drift(),
+                               DriftMetricsCat(wasserstein=0.0024097093655411628,
+                                               chi2_test=Chi2TestResult(statistic=0.0,
+                                                                        pvalue=1.0,
+                                                                        dof=1,
+                                                                        contingency_table=pd.DataFrame([[148.0, 250.0], [64.0, 107.0]],
+                                                                                                       index=['X1', 'X2'], columns=[0, 1]))))
 
     # performance_metrics_drift
     assert drift_explainer.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.013343524769294877},
@@ -471,108 +461,53 @@ def test_breast_cancer_xgboost_XGBClassifier():
                     atol=NUMPY_atol)
 
     # feature_drift mean perimeter
-    assert drift_explainer.get_feature_drift('mean perimeter') == {'mean_difference': -0.5394598724617197,
-                                                          'wasserstein': 3.3009656469481903,
-                                                          'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07401040289165124,
-                                                                                                          pvalue=0.4998149146505402)}
+    assert_drift_metrics_equal(drift_explainer.get_feature_drift('mean perimeter'),
+                               DriftMetricsNum(mean_difference=-0.5394598724617197,
+                                               wasserstein=3.3009656469481903,
+                                               ks_test=BaseStatisticalTestResult(statistic=0.07401040289165124,
+                                                                                 pvalue=0.4998149146505402)))
 
     # feature_drift_feature_4
-    assert drift_explainer.get_feature_drift(4) == {'mean_difference': -0.0011612596608774894,
-                                                    'wasserstein': 0.0016581176349584157,
-                                                    'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.10195715419201269,
-                                                                                                    pvalue=0.1528888570418342)}
+    assert_drift_metrics_equal(drift_explainer.get_feature_drift(4),
+                               DriftMetricsNum(mean_difference=-0.0011612596608774894,
+                                               wasserstein=0.0016581176349584157,
+                                               ks_test=BaseStatisticalTestResult(statistic=0.10195715419201269,
+                                                                                 pvalue=0.1528888570418342)))
 
     # all feature drifts
-    assert drift_explainer.get_feature_drifts() == [{'mean_difference': -0.06832955714243738,
-                                                     'wasserstein': 0.5165887184460309,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07067501248934732, pvalue=0.5585303796186362)},
-                                                    {'mean_difference': 0.014966205295483093,
-                                                     'wasserstein': 0.48581195450938897,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07262922801140204, pvalue=0.5235102002710166)},
-                                                    {'mean_difference': -0.5394598724617197,
-                                                     'wasserstein': 3.3009656469481903,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07401040289165124, pvalue=0.4998149146505402)},
-                                                    {'mean_difference': -17.377639660289788,
-                                                     'wasserstein': 51.29123100884536,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.06404831173410915, pvalue=0.6798041178199972)},
-                                                    {'mean_difference': -0.0011612596608774894,
-                                                     'wasserstein': 0.0016581176349584157,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.10195715419201269, pvalue=0.1528888570418342)},
-                                                    {'mean_difference': -0.003067542684181135,
-                                                     'wasserstein': 0.006741856651679452,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.06678127479502777, pvalue=0.6292065348385405)},
-                                                    {'mean_difference': -0.006204282970407593,
-                                                     'wasserstein': 0.006991872085574072,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.05695142378559464, pvalue=0.8061165226745349)},
-                                                    {'mean_difference': -0.002757498369038165,
-                                                     'wasserstein': 0.0030981202797613783,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07233536101560434, pvalue=0.5289539515277676)},
-                                                    {'mean_difference': -0.0015799582708866666,
-                                                     'wasserstein': 0.0029724940491933365,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07430426988744894, pvalue=0.4945853439694361)},
-                                                    {'mean_difference': -0.0005908483940168588,
-                                                     'wasserstein': 0.0007386144171148141,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.08001998295571425, pvalue=0.4016092513985777)},
-                                                    {'mean_difference': 0.0037102162861089028,
-                                                     'wasserstein': 0.024305223485850316,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07703723294836756, pvalue=0.4491840353305204)},
-                                                    {'mean_difference': 0.02886939669105759,
-                                                     'wasserstein': 0.05198642040612427,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.0476211466690176, pvalue=0.9335508976473271)},
-                                                    {'mean_difference': 0.07566076581739134,
-                                                     'wasserstein': 0.21045070968879498,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07721355314584619, pvalue=0.44639850985093277)},
-                                                    {'mean_difference': -1.0084665432425268,
-                                                     'wasserstein': 3.717517793646603,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07694907284962826, pvalue=0.4505043319421054)},
-                                                    {'mean_difference': -0.0003356947309647645,
-                                                     'wasserstein': 0.0005335116518263824,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.0786828881248347, pvalue=0.4227052366505618)},
-                                                    {'mean_difference': -0.0007019634870257772,
-                                                     'wasserstein': 0.0019131883246642555,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.08865967263216668, pvalue=0.28293492039886137)},
-                                                    {'mean_difference': -0.0013409832539892468,
-                                                     'wasserstein': 0.003182003266331656,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.08345822680654735, pvalue=0.3510440105305035)},
-                                                    {'mean_difference': 2.3271988597960494e-05,
-                                                     'wasserstein': 0.0006830131799347609,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.0452555173528461, pvalue=0.9552787666453139)},
-                                                    {'mean_difference': 0.0011282174468835414,
-                                                     'wasserstein': 0.0012097365629316194,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07890328837168298, pvalue=0.41933341366069177)},
-                                                    {'mean_difference': -0.0002275110538070466,
-                                                     'wasserstein': 0.000301250179258867,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.05733345088013165, pvalue=0.7993870994743999)},
-                                                    {'mean_difference': -0.06736449792823507,
-                                                     'wasserstein': 0.5360777131270384,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.05892033265743924, pvalue=0.772495994489099)},
-                                                    {'mean_difference': -0.1677551500191079,
-                                                     'wasserstein': 0.4373399159540389,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.05468864791795233, pvalue=0.8423784026321328)},
-                                                    {'mean_difference': -0.2752897528578728,
-                                                     'wasserstein': 3.3780036145640473,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.0704986922918687, pvalue=0.5621042713248987)},
-                                                    {'mean_difference': -20.36132563401793,
-                                                     'wasserstein': 61.92498604131765,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.057495077727820386, pvalue=0.7963855471533337)},
-                                                    {'mean_difference': -0.0031193050045549287,
-                                                     'wasserstein': 0.0032626057186517362,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.09193628963531106, pvalue=0.24521731583934214)},
-                                                    {'mean_difference': -0.006255693526110079,
-                                                     'wasserstein': 0.013996743806753077,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.09212730318257957, pvalue=0.24304491278560958)},
-                                                    {'mean_difference': -0.014588629316171553,
-                                                     'wasserstein': 0.01665632422345645,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.08436921449352024, pvalue=0.3384205412836392)},
-                                                    {'mean_difference': -0.0035156151077022635,
-                                                     'wasserstein': 0.005018610787857414,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.04593141144318082, pvalue=0.9493671446153595)},
-                                                    {'mean_difference': 0.001843304240500776,
-                                                     'wasserstein': 0.007164130594492942,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07614093861118458, pvalue=0.4637484909517612)},
-                                                    {'mean_difference': -0.0014582808780746054,
-                                                     'wasserstein': 0.0027211234535249344,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.07605277851244527, pvalue=0.46509038807816905)}]
+    feature_drifts_ref = [DriftMetricsNum(mean_difference=-0.06832955714243738, wasserstein=0.5165887184460309, ks_test=BaseStatisticalTestResult(statistic=0.07067501248934732, pvalue=0.5585303796186362)),
+                          DriftMetricsNum(mean_difference=0.014966205295483093, wasserstein=0.48581195450938897, ks_test=BaseStatisticalTestResult(statistic=0.07262922801140204, pvalue=0.5235102002710166)),
+                          DriftMetricsNum(mean_difference=-0.5394598724617197, wasserstein=3.3009656469481903, ks_test=BaseStatisticalTestResult(statistic=0.07401040289165124, pvalue=0.4998149146505402)),
+                          DriftMetricsNum(mean_difference=-17.377639660289788, wasserstein=51.29123100884536, ks_test=BaseStatisticalTestResult(statistic=0.06404831173410915, pvalue=0.6798041178199972)),
+                          DriftMetricsNum(mean_difference=-0.0011612596608774894, wasserstein=0.0016581176349584157, ks_test=BaseStatisticalTestResult(statistic=0.10195715419201269, pvalue=0.1528888570418342)),
+                          DriftMetricsNum(mean_difference=-0.003067542684181135, wasserstein=0.006741856651679452, ks_test=BaseStatisticalTestResult(statistic=0.06678127479502777, pvalue=0.6292065348385405)),
+                          DriftMetricsNum(mean_difference=-0.006204282970407593, wasserstein=0.006991872085574072, ks_test=BaseStatisticalTestResult(statistic=0.05695142378559464, pvalue=0.8061165226745349)),
+                          DriftMetricsNum(mean_difference=-0.002757498369038165, wasserstein=0.0030981202797613783, ks_test=BaseStatisticalTestResult(statistic=0.07233536101560434, pvalue=0.5289539515277676)),
+                          DriftMetricsNum(mean_difference=-0.0015799582708866666, wasserstein=0.0029724940491933365, ks_test=BaseStatisticalTestResult(statistic=0.07430426988744894, pvalue=0.4945853439694361)),
+                          DriftMetricsNum(mean_difference=-0.0005908483940168588, wasserstein=0.0007386144171148141, ks_test=BaseStatisticalTestResult(statistic=0.08001998295571425, pvalue=0.4016092513985777)),
+                          DriftMetricsNum(mean_difference=0.0037102162861089028, wasserstein=0.024305223485850316, ks_test=BaseStatisticalTestResult(statistic=0.07703723294836756, pvalue=0.4491840353305204)),
+                          DriftMetricsNum(mean_difference=0.02886939669105759, wasserstein=0.05198642040612427, ks_test=BaseStatisticalTestResult(statistic=0.0476211466690176, pvalue=0.9335508976473271)),
+                          DriftMetricsNum(mean_difference=0.07566076581739134, wasserstein=0.21045070968879498, ks_test=BaseStatisticalTestResult(statistic=0.07721355314584619, pvalue=0.44639850985093277)),
+                          DriftMetricsNum(mean_difference=-1.0084665432425268, wasserstein=3.717517793646603, ks_test=BaseStatisticalTestResult(statistic=0.07694907284962826, pvalue=0.4505043319421054)),
+                          DriftMetricsNum(mean_difference=-0.0003356947309647645, wasserstein=0.0005335116518263824, ks_test=BaseStatisticalTestResult(statistic=0.0786828881248347, pvalue=0.4227052366505618)),
+                          DriftMetricsNum(mean_difference=-0.0007019634870257772, wasserstein=0.0019131883246642555, ks_test=BaseStatisticalTestResult(statistic=0.08865967263216668, pvalue=0.28293492039886137)),
+                          DriftMetricsNum(mean_difference=-0.0013409832539892468, wasserstein=0.003182003266331656, ks_test=BaseStatisticalTestResult(statistic=0.08345822680654735, pvalue=0.3510440105305035)),
+                          DriftMetricsNum(mean_difference=2.3271988597960494e-05, wasserstein=0.0006830131799347609, ks_test=BaseStatisticalTestResult(statistic=0.0452555173528461, pvalue=0.9552787666453139)),
+                          DriftMetricsNum(mean_difference=0.0011282174468835414, wasserstein=0.0012097365629316194, ks_test=BaseStatisticalTestResult(statistic=0.07890328837168298, pvalue=0.41933341366069177)),
+                          DriftMetricsNum(mean_difference=-0.0002275110538070466, wasserstein=0.000301250179258867, ks_test=BaseStatisticalTestResult(statistic=0.05733345088013165, pvalue=0.7993870994743999)),
+                          DriftMetricsNum(mean_difference=-0.06736449792823507, wasserstein=0.5360777131270384, ks_test=BaseStatisticalTestResult(statistic=0.05892033265743924, pvalue=0.772495994489099)),
+                          DriftMetricsNum(mean_difference=-0.1677551500191079, wasserstein=0.4373399159540389, ks_test=BaseStatisticalTestResult(statistic=0.05468864791795233, pvalue=0.8423784026321328)),
+                          DriftMetricsNum(mean_difference=-0.2752897528578728, wasserstein=3.3780036145640473, ks_test=BaseStatisticalTestResult(statistic=0.0704986922918687, pvalue=0.5621042713248987)),
+                          DriftMetricsNum(mean_difference=-20.36132563401793, wasserstein=61.92498604131765, ks_test=BaseStatisticalTestResult(statistic=0.057495077727820386, pvalue=0.7963855471533337)),
+                          DriftMetricsNum(mean_difference=-0.0031193050045549287, wasserstein=0.0032626057186517362, ks_test=BaseStatisticalTestResult(statistic=0.09193628963531106, pvalue=0.24521731583934214)),
+                          DriftMetricsNum(mean_difference=-0.006255693526110079, wasserstein=0.013996743806753077, ks_test=BaseStatisticalTestResult(statistic=0.09212730318257957, pvalue=0.24304491278560958)),
+                          DriftMetricsNum(mean_difference=-0.014588629316171553, wasserstein=0.01665632422345645, ks_test=BaseStatisticalTestResult(statistic=0.08436921449352024, pvalue=0.3384205412836392)),
+                          DriftMetricsNum(mean_difference=-0.0035156151077022635, wasserstein=0.005018610787857414, ks_test=BaseStatisticalTestResult(statistic=0.04593141144318082, pvalue=0.9493671446153595)),
+                          DriftMetricsNum(mean_difference=0.001843304240500776, wasserstein=0.007164130594492942, ks_test=BaseStatisticalTestResult(statistic=0.07614093861118458, pvalue=0.4637484909517612)),
+                          DriftMetricsNum(mean_difference=-0.0014582808780746054, wasserstein=0.0027211234535249344, ks_test=BaseStatisticalTestResult(statistic=0.07605277851244527, pvalue=0.46509038807816905))]
+
+    assert_drift_metrics_list_equal(drift_explainer.get_feature_drifts(),
+                                    feature_drifts_ref)
 
     # tree_based_correction_weights with default params
     assert_allclose(drift_explainer.get_tree_based_correction_weights(),
@@ -806,39 +741,31 @@ def test_iris_xgboost_XGBClassifier():
     drift_explainer.fit(X1=X_train, X2=X_test, y1=y_train, y2=y_test)
 
     # prediction drift "raw"
-    assert drift_explainer.get_prediction_drift() == [{'mean_difference': 0.33904417620764843,
-                                                       'wasserstein': 0.3390441762076484,
-                                                       'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.06349206349206349, pvalue=0.9987212484986797)},
-                                                      {'mean_difference': 0.3479284484826383,
-                                                       'wasserstein': 0.3566064995077869,
-                                                       'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.1365079365079365, pvalue=0.5571746191565534)},
-                                                      {'mean_difference': -0.6179708909184214,
-                                                       'wasserstein': 0.6183046163784134,
-                                                       'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.17142857142857143, pvalue=0.2821678346768163)}]
+    prediction_drift_ref = [DriftMetricsNum(mean_difference=0.33904417620764843, wasserstein=0.3390441762076484, ks_test=BaseStatisticalTestResult(statistic=0.06349206349206349, pvalue=0.9987212484986797)),
+                            DriftMetricsNum(mean_difference=0.3479284484826383, wasserstein=0.3566064995077869, ks_test=BaseStatisticalTestResult(statistic=0.1365079365079365, pvalue=0.5571746191565534)),
+                            DriftMetricsNum(mean_difference=-0.6179708909184214, wasserstein=0.6183046163784134, ks_test=BaseStatisticalTestResult(statistic=0.17142857142857143, pvalue=0.2821678346768163))]
+    assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(),
+                                    prediction_drift_ref)
 
     # prediction drift "proba"
-    assert drift_explainer.get_prediction_drift(prediction_type='proba') == [{'mean_difference': 0.06179329878133205,
-                                                                              'wasserstein': 0.06183055994795665,
-                                                                              'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.1111111111111111, pvalue=0.793799989988573)},
-                                                                             {'mean_difference': 0.08402968007065947,
-                                                                              'wasserstein': 0.0844271551403735,
-                                                                              'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.10793650793650794, pvalue=0.8205934119780005)},
-                                                                             {'mean_difference': -0.1458229802755846,
-                                                                              'wasserstein': 0.14582381487365756,
-                                                                              'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.17142857142857143, pvalue=0.2821678346768163)}]
+    prediction_drift_proba_ref = [DriftMetricsNum(mean_difference=0.06179329878133205, wasserstein=0.06183055994795665, ks_test=BaseStatisticalTestResult(statistic=0.1111111111111111, pvalue=0.793799989988573)),
+                                  DriftMetricsNum(mean_difference=0.08402968007065947, wasserstein=0.0844271551403735, ks_test=BaseStatisticalTestResult(statistic=0.10793650793650794, pvalue=0.8205934119780005)),
+                                  DriftMetricsNum(mean_difference=-0.1458229802755846, wasserstein=0.14582381487365756, ks_test=BaseStatisticalTestResult(statistic=0.17142857142857143, pvalue=0.2821678346768163))]
+    assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='proba'),
+                                    prediction_drift_proba_ref)
 
     # target drift
-    assert drift_explainer.get_target_drift() == {'wasserstein': 0.09523809523809523,
-                                                  'chi2_test': Chi2TestResult(statistic=1.3333333333333333,
-                                                                              pvalue=0.5134171190325922,
-                                                                              dof=2,
-                                                                              contingency_table=pd.DataFrame([[33.0, 34.0, 38.0], [17.0, 16.0, 12.0]],
-                                                                                                             index=['X1', 'X2'], columns=['0', '1', '2']))}
+    assert_drift_metrics_equal(drift_explainer.get_target_drift(),
+                               DriftMetricsCat(wasserstein=0.09523809523809523,
+                                               chi2_test=Chi2TestResult(statistic=1.3333333333333333,
+                                                                        pvalue=0.5134171190325922,
+                                                                        dof=2,
+                                                                        contingency_table=pd.DataFrame([[33.0, 34.0, 38.0], [17.0, 16.0, 12.0]],
+                                                                                                       index=['X1', 'X2'], columns=[0, 1, 2]))))
 
     # performance_metrics_drift
     assert drift_explainer.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.03573701255733058},
                                                                'dataset 2': {'log_loss': 0.1726300963304109}}
-
 
     # tree_based_drift_values "node_size"
     assert_allclose(drift_explainer.get_tree_based_drift_values(type='node_size'),
@@ -865,28 +792,26 @@ def test_iris_xgboost_XGBClassifier():
                     atol=NUMPY_atol)
 
     # feature_drift - argument as a string
-    assert drift_explainer.get_feature_drift('petal width (cm)') == {'mean_difference': -0.16412698412698457,
-                                                                   'wasserstein': 0.16412698412698412,
-                                                                   'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.17142857142857143, pvalue=0.2821678346768163)}
+    assert_drift_metrics_equal(drift_explainer.get_feature_drift('petal width (cm)'),
+                               DriftMetricsNum(mean_difference=-0.16412698412698457,
+                                               wasserstein=0.16412698412698412,
+                                               ks_test=BaseStatisticalTestResult(statistic=0.17142857142857143,
+                                                                                 pvalue=0.2821678346768163)))
 
     # feature_drift - argument as integer
-    assert drift_explainer.get_feature_drift(2) == {'mean_difference': -0.2765079365079357,
-                                                    'wasserstein': 0.2777777777777778,
-                                                    'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.1523809523809524, pvalue=0.41885114043708227)}
+    assert_drift_metrics_equal(drift_explainer.get_feature_drift(2),
+                               DriftMetricsNum(mean_difference=-0.2765079365079357,
+                                               wasserstein=0.2777777777777778,
+                                               ks_test=BaseStatisticalTestResult(statistic=0.1523809523809524,
+                                                                                 pvalue=0.41885114043708227)))
 
     # all feature drifts
-    assert drift_explainer.get_feature_drifts() == [{'mean_difference': -0.18571428571428505,
-                                                     'wasserstein': 0.19968253968253974,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.16507936507936508, pvalue=0.3237613427576299)},
-                                                    {'mean_difference': -0.08825396825396803,
-                                                     'wasserstein': 0.1301587301587301,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.14285714285714285, pvalue=0.499646880472137)},
-                                                    {'mean_difference': -0.2765079365079357,
-                                                     'wasserstein': 0.2777777777777778,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.1523809523809524, pvalue=0.41885114043708227)},
-                                                    {'mean_difference': -0.16412698412698457,
-                                                     'wasserstein': 0.16412698412698412,
-                                                     'kolmogorov_smirnov': StatisticalTestResultBase(statistic=0.17142857142857143, pvalue=0.2821678346768163)}]
+    feature_drifts_ref = [DriftMetricsNum(mean_difference=-0.18571428571428505, wasserstein=0.19968253968253974, ks_test=BaseStatisticalTestResult(statistic=0.16507936507936508, pvalue=0.3237613427576299)),
+                          DriftMetricsNum(mean_difference=-0.08825396825396803, wasserstein=0.1301587301587301, ks_test=BaseStatisticalTestResult(statistic=0.14285714285714285, pvalue=0.499646880472137)),
+                          DriftMetricsNum(mean_difference=-0.2765079365079357, wasserstein=0.2777777777777778, ks_test=BaseStatisticalTestResult(statistic=0.1523809523809524, pvalue=0.41885114043708227)),
+                          DriftMetricsNum(mean_difference=-0.16412698412698457, wasserstein=0.16412698412698412, ks_test=BaseStatisticalTestResult(statistic=0.17142857142857143, pvalue=0.2821678346768163))]
+    assert_drift_metrics_list_equal(drift_explainer.get_feature_drifts(),
+                                    feature_drifts_ref)
 
     # tree_based_correction_weights with default params
     assert_allclose(drift_explainer.get_tree_based_correction_weights(),
