@@ -139,7 +139,7 @@ def compute_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_w
 
 
 def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None, title=None,
-                   max_n_cat: float = None, figsize=(10, 6)):
+                   max_n_cat: int = None, figsize=(10, 6)):
     # compute both distributions
     distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2, max_n_cat)
     bar_height = np.array([v for v in distrib.values()])  # len(distrib) rows and 2 columns

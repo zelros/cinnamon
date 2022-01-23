@@ -1,4 +1,5 @@
 import sys
+import numpy as np
 
 
 def safe_isinstance(obj, class_path_str):
@@ -54,3 +55,12 @@ def safe_isinstance(obj, class_path_str):
             return True
 
     return False
+
+
+def find_uniques(*arrays: np.array):
+    uniques = set()
+    for a in arrays:
+        for x in np.unique(a):
+            uniques.add(x)
+    uniques.discard(None)
+    return list(uniques)

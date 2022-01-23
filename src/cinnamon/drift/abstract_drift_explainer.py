@@ -1,14 +1,10 @@
-import logging
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from typing import List, Tuple, Union
 
 from .drift_utils import compute_drift_cat, compute_drift_num, plot_drift_cat, plot_drift_num
-
-logging.basicConfig(format='%(levelname)s:%(asctime)s - (%(pathname)s) %(message)s', level=logging.INFO)
-
-cinnamon_logger = logging.getLogger('Cinnamon')
+from ..common.logging import cinnamon_logger
 
 
 class AbstractDriftExplainer:
