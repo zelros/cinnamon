@@ -83,7 +83,7 @@ class OutputDriftExplainer:
 
     @staticmethod
     def _check_input_predictions(predictions: np.array, n: int, task: str, prediction_type: str) -> np.array:
-        predictions = np.squeeze(predictions)
+        predictions = np.array(np.squeeze(predictions))
         if task == 'regression':
             if predictions.ndim != 1:
                 raise ValueError(f'Bad shape for "predictions{n}"')
@@ -292,7 +292,7 @@ class OutputDriftExplainer:
         # TODO: put this in AbstractDriftAnalyzer
         raise ValueError('Either y1 or y2 was not passed to "fit"')
 
-    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins: int = 10):
+    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins: int = 10) -> None:
         # TODO: put this in AbstractDriftAnalyzer
         """
         Plot distributions of labels in order to
@@ -337,5 +337,5 @@ class OutputDriftExplainer:
             return {'dataset 1': compute_regression_metrics(self.y1, self.predictions1, self.sample_weights1),
                     'dataset 2': compute_regression_metrics(self.y2, self.predictions2, self.sample_weights2)}
         else:  # task == 'classification':
-            return {'dataset 1': compute_classification_metrics(self.y1, self.predictions1, self.sample_weights1, self.prediction_type, self.class_names),
-                    'dataset 2': compute_classification_metrics(self.y2, self.predictions2, self.sample_weights2, self.prediction_type, self.class_names)}
+            return {'dataset 1': compute_classification_metrics(self.y1, self.predictions1, self.sample_weights1, self.class_names, self.prediction_type),
+                    'dataset 2': compute_classification_metrics(self.y2, self.predictions2, self.sample_weights2, self.class_names, self.prediction_type)}
