@@ -122,7 +122,7 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
             drift_values_details.append(drift_values_tree)
         return drift_values  #, drift_values_details
 
-    def plot_tree_drift(self, tree_idx: int, type: str, feature_names: List[str]):
+    def plot_tree_drift(self, tree_idx: int, type: str, feature_names: List[str]) -> None:
         if self.node_weights1 is None:
             raise ValueError('You need to run drift_explainer.fit before calling plot_tree_drift')
         if type not in [e.value for e in TreeBasedDriftValueType]:

@@ -347,6 +347,7 @@ def test_breast_cancer_xgboost_XGBClassifier():
     # target drift
     assert_drift_metrics_equal(drift_explainer.get_target_drift(),
                                DriftMetricsCat(wasserstein=0.0024097093655411628,
+                                               jensen_shannon=0.0017616379091961293,
                                                chi2_test=Chi2TestResult(statistic=0.0,
                                                                         pvalue=1.0,
                                                                         dof=1,
@@ -757,6 +758,7 @@ def test_iris_xgboost_XGBClassifier():
     # target drift
     assert_drift_metrics_equal(drift_explainer.get_target_drift(),
                                DriftMetricsCat(wasserstein=0.09523809523809523,
+                                               jensen_shannon=0.07382902143706498,
                                                chi2_test=Chi2TestResult(statistic=1.3333333333333333,
                                                                         pvalue=0.5134171190325922,
                                                                         dof=2,
