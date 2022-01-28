@@ -258,7 +258,7 @@ class OutputDriftExplainer:
         if self.predictions1 is None or self.predictions2 is None:
             raise ValueError('You have to call the fit method first')
 
-    def get_target_drift(self) -> dict:
+    def get_target_drift(self) -> AbstractDriftMetrics:
         """
         Compute drift measures for the labels y.
 
