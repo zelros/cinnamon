@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from typing import List, Tuple, Union
 
-from .drift_utils import compute_drift_cat, compute_drift_num, plot_drift_cat, plot_drift_num
+from .drift_utils import compute_drift_cat, compute_drift_num, plot_drift_cat, plot_drift_num, AbstractDriftMetrics
 from ..common.logging import cinnamon_logger
 
 
@@ -28,7 +28,7 @@ class AbstractDriftExplainer:
         self.y2 = None
 
     @staticmethod
-    def _compute_feature_drifts(X1, X2, n_features, cat_feature_indices, sample_weights1, sample_weights2) -> List[dict]:
+    def _compute_feature_drifts(X1, X2, n_features, cat_feature_indices, sample_weights1, sample_weights2) -> List[AbstractDriftMetrics]:
         feature_drifts = []
         for i in range(n_features):
             if i in cat_feature_indices:
@@ -40,7 +40,7 @@ class AbstractDriftExplainer:
             feature_drifts.append(feature_drift)
         return feature_drifts
 
-    def get_target_drift(self) -> dict:
+    def get_target_drift(self) -> AbstractDriftMetrics:
         """
         Compute drift measures for the labels y.
 
@@ -61,7 +61,7 @@ class AbstractDriftExplainer:
         target_drift : dict
             Dictionary of drift measures for the labels
         """
-        if isinstance(self.target_drift, dict):
+        if self.target_drift is not None:
             return self.target_drift
 
         if self.y1 is None or self.y2 is None:
@@ -107,7 +107,7 @@ class AbstractDriftExplainer:
             plot_drift_num(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
                            figsize=figsize, bins=bins)
 
-    def get_feature_drifts(self) -> List[dict]:
+    def get_feature_drifts(self) -> List[AbstractDriftMetrics]:
         """
         Compute drift measures for all features in X.
 
@@ -134,7 +134,7 @@ class AbstractDriftExplainer:
                                                                self.sample_weights1, self.sample_weights2)
         return self.feature_drifts
 
-    def get_feature_drift(self, feature: Union[int, str]) -> dict:
+    def get_feature_drift(self, feature: Union[int, str]) -> AbstractDriftMetrics:
         """
         Compute drift measures for a given feature in X.
 

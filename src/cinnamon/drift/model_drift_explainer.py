@@ -8,7 +8,7 @@ from ..model_parser.i_model_parser import IModelParser
 from .adversarial_drift_explainer import AdversarialDriftExplainer
 from ..model_parser.xgboost_parser import XGBoostParser
 
-from .drift_utils import compute_drift_num, plot_drift_num
+from .drift_utils import compute_drift_num, plot_drift_num, DriftMetricsNum
 from ..common.dev_utils import safe_isinstance
 from ..common.stat_utils import (compute_classification_metrics,
                                  compute_regression_metrics)
@@ -158,7 +158,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
 
         return self
 
-    def get_prediction_drift(self, prediction_type: str = "raw") -> List[dict]:
+    def get_prediction_drift(self, prediction_type: str = "raw") -> List[DriftMetricsNum]:
         """
         Compute drift measures based on model predictions.
 
@@ -176,7 +176,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
 
         Returns
         -------
-        prediction_drift : list of dict
+        prediction_drift : list of DriftMetricsNum object
             Drift measures for each predicted dimension.
         """
         if prediction_type not in ['raw', 'proba']:
@@ -189,7 +189,8 @@ class ModelDriftExplainer(AbstractDriftExplainer):
                                                   self.sample_weights1, self.sample_weights2)
 
     @staticmethod
-    def _compute_prediction_drift(predictions1, predictions2, task, prediction_dim, sample_weights1=None, sample_weights2=None):
+    def _compute_prediction_drift(predictions1, predictions2, task, prediction_dim,
+                                  sample_weights1=None, sample_weights2=None) -> List[DriftMetricsNum]:
         prediction_drift = []
         if task == 'classification':
             if prediction_dim == 1:  # binary classif
@@ -258,8 +259,8 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         if self.y1 is None or self.y2 is None:
             self._raise_no_target_error()
         if self.task == 'classification':
-            return {'dataset 1': compute_classification_metrics(self.y1, self.pred_proba1, self.sample_weights1),
-                    'dataset 2': compute_classification_metrics(self.y2, self.pred_proba2, self.sample_weights2)}
+            return {'dataset 1': compute_classification_metrics(self.y1, self.pred_proba1, self.sample_weights1, self.class_names),
+                    'dataset 2': compute_classification_metrics(self.y2, self.pred_proba2, self.sample_weights2, self.class_names)}
         elif self.task == 'regression':
             return {'dataset 1': compute_regression_metrics(self.y1, self.predictions1, self.sample_weights1),
                     'dataset 2': compute_regression_metrics(self.y2, self.predictions2, self.sample_weights2)}
@@ -290,7 +291,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         """
         return self._model_parser.compute_tree_based_drift_values(type)
 
-    def plot_tree_based_drift_values(self, n: int = 10, type: str = TreeBasedDriftValueType.NODE_SIZE.value):
+    def plot_tree_based_drift_values(self, n: int = 10, type: str = TreeBasedDriftValueType.NODE_SIZE.value) -> None:
         """
         Plot drift values computed using the tree structures present in the model.
 
@@ -343,14 +344,14 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             drift_values.append(drift_value)
         return np.array(drift_values).reshape(-1, 1)
 
-    def plot_prediction_based_drift_values(self, n: int = 10):
+    def plot_prediction_based_drift_values(self, n: int = 10) -> None:
         """Not implemented"""
         self._raise_not_implem_feature_error()
         drift_values = self.get_prediction_based_drift_values()
         print(drift_values)
         self._plot_drift_values(drift_values, n, self.feature_names)
 
-    def plot_tree_drift(self, tree_idx: int, type: str = TreeBasedDriftValueType.NODE_SIZE.value):
+    def plot_tree_drift(self, tree_idx: int, type: str = TreeBasedDriftValueType.NODE_SIZE.value) -> None:
         """
         Plot the representation of a given tree in the model, to illustrate how
         drift values are computed.
@@ -376,7 +377,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         -------
         None
         """
-        return self._model_parser.plot_tree_drift(tree_idx, type, self.feature_names)
+        self._model_parser.plot_tree_drift(tree_idx, type, self.feature_names)
 
     def get_tree_based_correction_weights(self, max_depth: int = None, max_ratio: int = 10) -> np.array:
         """
@@ -406,7 +407,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         return self._model_parser.compute_tree_based_correction_weights(self.X1, max_depth, max_ratio, self.sample_weights1)
 
     @staticmethod
-    def _get_n_features(model_parser: IModelParser):
+    def _get_n_features(model_parser: IModelParser) -> int:
         return model_parser.n_features
 
     @staticmethod
