@@ -6,7 +6,7 @@ models/
 data/
 .DS_Store
 figures/
-*/__pycache__/
+**/__pycache__/
 save/
 *_old*
 dist/

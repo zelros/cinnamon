@@ -50,7 +50,7 @@ else:
             plt.show()
 
             print(f"Wasserstein distance: {drift_explainer.prediction_drift[i]['wasserstein']}")
-            print(f"Kolmogorov Smirnov test: {drift_explainer.prediction_drift[i]['kolmogorov_smirnov']}")
+            print(f"Kolmogorov Smirnov test: {drift_explainer.prediction_drift[i]['ks_test']}")
 ```
 
 # 2.2 Explanation of the drift: feature contributions
@@ -73,5 +73,5 @@ for i, feature_name in enumerate(drift_explainer.feature_names):
           print(f"Chi2 test: {drift_explainer.feature_drifts[i]['chi2_test']}")
     else:
         print(f"Wasserstein distance: {drift_explainer.feature_drifts[i]['wasserstein']}")
-        print(f"Kolmogorov Smirnov test: {drift_explainer.feature_drifts[i]['kolmogorov_smirnov']}")
+        print(f"Kolmogorov Smirnov test: {drift_explainer.feature_drifts[i]['ks_test']}")
 ```
