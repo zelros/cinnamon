@@ -43,7 +43,7 @@ def compute_regression_metrics(y_true: np.array, y_pred: np.array, sample_weight
 #        Compute distribution
 # --------------------------------
 
-def compute_distribution_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None,
+def compute_distributions_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None,
                              max_n_cat: int = None):
     if sample_weights1 is None:
         sample_weights1 = np.ones_like(a1)
@@ -116,7 +116,7 @@ def compute_mean_diff(a1: np.array, a2: np.array, sample_weights1=None, sample_w
 
 def wasserstein_distance_for_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None):
     # this correspond to wasserstein distance where we assume a distance 1 between two categories of the feature
-    distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2)
+    distrib = compute_distributions_cat(a1, a2, sample_weights1, sample_weights2)
     drift = 0
     for cat in distrib.keys():
         drift += abs(distrib[cat][0] - distrib[cat][1]) / 2
@@ -124,7 +124,7 @@ def wasserstein_distance_for_cat(a1: np.array, a2: np.array, sample_weights1=Non
 
 
 def jensen_shannon_distance(a1: np.array, a2: np.array, base=None, sample_weights1=None, sample_weights2=None):
-    distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2)
+    distrib = compute_distributions_cat(a1, a2, sample_weights1, sample_weights2)
     p = [v[0] for v in distrib.values()]
     q = [v[1] for v in distrib.values()]
     return jensenshannon(p, q, base=base)
@@ -138,7 +138,7 @@ def chi2_test(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=
     # TODO: generalization of Chi2 for weights != np.ones is complicated (need verif)
     # chi2 do not take max_n_cat into account. If pbm with number of cat, should be handled by
     # chi2_test internally with a proper solution
-    distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2)
+    distrib = compute_distributions_cat(a1, a2, sample_weights1, sample_weights2)
     contingency_table = pd.DataFrame({cat: pd.Series({'X1': distrib[cat][0] * len(a1), 'X2': distrib[cat][1] * len(a2)})
                                       for cat in distrib.keys()})
     statistic, pvalue, dof, expected = chi2_contingency(contingency_table)

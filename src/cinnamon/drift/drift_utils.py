@@ -3,7 +3,8 @@ from scipy.stats import wasserstein_distance, ks_2samp
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
 from typing import List
-from ..common.stat_utils import (compute_distribution_cat,
+from ..common.stat_utils import (compute_distributions_cat,
+                                 compute_distributions_num,
                                  compute_mean_diff,
                                  wasserstein_distance_for_cat,
                                  jensen_shannon_distance,
@@ -38,7 +39,7 @@ def compute_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_w
 def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None, title=None,
                    max_n_cat: int = None, figsize=(10, 6)):
     # compute both distributions
-    distrib = compute_distribution_cat(a1, a2, sample_weights1, sample_weights2, max_n_cat)
+    distrib = compute_distributions_cat(a1, a2, sample_weights1, sample_weights2, max_n_cat)
     bar_height = np.array([v for v in distrib.values()])  # len(distrib) rows and 2 columns
 
     # plot
@@ -59,10 +60,10 @@ def plot_drift_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weig
 
 def plot_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array = None, sample_weights2: np.array = None,
                    title=None, figsize=(7, 5), bins=10):
-    # distrib = compute_distribution_num(a1, a2, sample_weights1, sample_weights2)
+    distribs = compute_distributions_num(a1, a2, bins, sample_weights1, sample_weights2)
     fig, ax = plt.subplots(figsize=figsize)
-    ax.hist(a1, bins=bins, density=True, weights=sample_weights1, alpha=0.3)
-    ax.hist(a2, bins=bins, density=True, weights=sample_weights2, alpha=0.3)
+    ax.hist(a1, bins=distribs['bin_edges'], density=True, weights=sample_weights1, alpha=0.3)
+    ax.hist(a2, bins=distribs['bin_edges'], density=True, weights=sample_weights2, alpha=0.3)
     ax.legend(['Dataset 1', 'Dataset 2'])
     plt.title(title)
     plt.show()
