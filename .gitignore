@@ -13,3 +13,4 @@ dist/
 *.egg-info/
 RESEARCH.md
 build/
+catboost_info/
