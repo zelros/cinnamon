@@ -20,7 +20,6 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
     def fit(self, X1, X2, sample_weights1, sample_weights2):
         self.node_weights1 = self.get_node_weights(X1, sample_weights=sample_weights1)
         self.node_weights2 = self.get_node_weights(X2, sample_weights=sample_weights2)
-        #self._check_drift_values_mean(X1, X2, sample_weights1, sample_weights2)
 
     def get_predictions(self, X: pd.DataFrame, prediction_type: str) -> np.array:
         # return array of shape (nb. obs, nb. class) for multiclass and shape array of shape (nb. obs, )
@@ -85,7 +84,7 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
         if not np.array_equal(self.predict_leaf_with_model_parser(X), self.predict_leaf(X)):
             self._model_parser_error()
 
-    def _check_drift_values_mean(self, X1, X2, sample_weights1, sample_weights2):
+    def check_tree_based_drift_values_sum(self, X1, X2, sample_weights1, sample_weights2) -> None:
         sample_weights1_norm = sample_weights1 / np.sum(sample_weights1)
         sample_weights2_norm = sample_weights2 / np.sum(sample_weights2)
         if self.prediction_dim == 1:
@@ -95,8 +94,9 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
             mean_prediction_diff = np.sum(sample_weights2_norm[:, np.newaxis] * self.predict_raw(X2), axis=0) - \
                                    np.sum(sample_weights1_norm[:, np.newaxis] * self.predict_raw(X1), axis=0)
         stat = abs(self.compute_tree_based_drift_values(type=TreeBasedDriftValueType.MEAN.value).sum(axis=0) - mean_prediction_diff)
-        if any(stat > 10**(-3)):  # any works because difference is an array
-            raise ValueError('Error in computation of feature contributions')
+        if any(stat > 10**(-6)):  # any works because difference is an array
+            raise ValueError('Error in computation of tree based drift values. Your model may not be properly parsed '
+                             'by CinnaMon. You can report the error here: https://github.com/zelros/cinnamon/issues')
 
     def compute_tree_based_drift_values(self, type: str):
         """
@@ -117,7 +117,7 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
         for i, tree in enumerate(self.trees):
             drift_values_tree = tree.compute_drift_values(self.node_weights1[i], self.node_weights2[i],
                                                                   type=type)
-            drift_values = self.add_drift_values(drift_values, drift_values_tree, i,
+            drift_values = self._add_drift_values(drift_values, drift_values_tree, i,
                                                          self.prediction_dim, type)
             drift_values_details.append(drift_values_tree)
         return drift_values  #, drift_values_details
@@ -167,7 +167,7 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
         return weights
 
     @staticmethod
-    def add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
+    def _add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
         drift_values += drift_values_tree
         return drift_values
 

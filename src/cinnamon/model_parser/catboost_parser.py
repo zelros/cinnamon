@@ -6,6 +6,7 @@ import catboost
 import tempfile
 from typing import Tuple
 from .abstract_tree_ensemble_parser import AbstractTreeEnsembleParser
+from ..common.math_utils import reverse_binary_representation
 
 
 class CatBoostParser(AbstractTreeEnsembleParser):
@@ -29,8 +30,6 @@ class CatBoostParser(AbstractTreeEnsembleParser):
 
         self.iteration_range = self._get_iteration_range(iteration_range, len(self.json_cb_model['oblivious_trees']))
         self.n_iterations = self.iteration_range[1] - self.iteration_range[0]  # corresponds to n trees after iteration_range
-        self.n_trees = self.n_iterations
-        self.trees = self._get_trees(self.json_cb_model, self.iteration_range, self.original_model.n_features_in_)
 
         # load the CatBoost oblivious trees specific parameters
         self.model_objective = self.json_cb_model['model_info']['params']['loss_function']['type']
@@ -40,7 +39,7 @@ class CatBoostParser(AbstractTreeEnsembleParser):
         self.cat_feature_indices = self.original_model.get_cat_feature_indices()
         self.feature_names = self.original_model.feature_names_
         self.n_features = len(self.feature_names)
-        self.class_names = self.original_model.classes_.tolist()
+        self.class_names = [str(x) for x in self.original_model.classes_.tolist()]
         if self.class_names is not None and len(self.class_names) > 2:  # if multiclass
             self.prediction_dim = len(self.class_names)
         else:
@@ -55,12 +54,22 @@ class CatBoostParser(AbstractTreeEnsembleParser):
             self.cat_label_map = {feat['feature_index']: feat['values'] if 'values' in feat else None
                                   for feat in self.json_cb_model['features_info']['categorical_features']}
 
+        self.n_trees = self.n_iterations
+        self.trees = self._get_trees(self.json_cb_model, self.iteration_range, self.n_features)
+
     def _get_trees(self, json_cb_model, iteration_range, n_features):
         # load all trees
         trees = []
         for tree_index in range(iteration_range[0], iteration_range[1]):
             # leaf weights
             leaf_weights = json_cb_model['oblivious_trees'][tree_index]['leaf_weights']
+            # ------------------------------------------------------------------------------------------------
+            # BugFix : correcting the way CatBoost numbers the predicted leaves (with order of splits inversed)
+            n_bits = int(np.log2(len(leaf_weights)))
+            mapping = [reverse_binary_representation(x, n_bits) for x in range(2**n_bits)]
+            # ------------------------------------------------------------------------------------------------
+
+            leaf_weights = [leaf_weights[mapping[i]] for i in range(len(leaf_weights))]
             # re-compute the number of samples that pass through each node
             leaf_weights_unraveled = [0] * (len(leaf_weights) - 1) + leaf_weights
             for index in range(len(leaf_weights) - 2, -1, -1):
@@ -71,9 +80,11 @@ class CatBoostParser(AbstractTreeEnsembleParser):
             # leaf values = log softmax if multiclass classification
             leaf_values = json_cb_model['oblivious_trees'][tree_index]['leaf_values']
             n_class = int(len(leaf_values) / len(leaf_weights))
+
             # re-compute leaf values within each node
             leaf_values_unraveled = np.concatenate((np.zeros((len(leaf_weights) - 1, n_class)),
-                                                    np.array(leaf_values).reshape(len(leaf_weights), n_class)), axis=0)
+                                                    np.array(leaf_values).reshape(len(leaf_weights), n_class)[mapping]),
+                                                   axis=0)
             for index in range(len(leaf_weights) - 2, -1, -1):
                 if leaf_weights_unraveled[2 * index + 1] + leaf_weights_unraveled[2 * index + 2] == 0:
                     leaf_values_unraveled[index, :] = [-1] * n_class  # equal probabilities
@@ -107,7 +118,7 @@ class CatBoostParser(AbstractTreeEnsembleParser):
                     split_features_index.append(json_cb_model['features_info']['categorical_features'][elem.get('cat_feature_index')]['flat_feature_index'])
                     borders.append(elem['value'])
                 elif split_type == 'OnlineCtr':
-                    # FIXME: afraid of the 0 bellow there could be more than 1 element ?
+                    # TODO: only the first feature in the list is considered here (multiple feature
                     corresponding_cat_index = json_cb_model['features_info']['ctrs'][elem.get('ctr_target_border_idx')]['elements'][0]['cat_feature_index']
                     split_features_index.append(self.cat_feature_index_map[corresponding_cat_index])
                     borders.append(elem['border'])
@@ -148,10 +159,20 @@ class CatBoostParser(AbstractTreeEnsembleParser):
         predicted_leaves = self.original_model.calc_leaf_indexes(pool,
                                                      ntree_start=self.iteration_range[0],
                                                      ntree_end=self.iteration_range[1])
+        # ------------------------------------------------------------------------------------------------
+        # BugFix : correcting the way CatBoost numbers the predicted leaves (with order of splits inversed)
+        for i in range(predicted_leaves.shape[1]):
+            n_leaves = int((self.trees[i].n_nodes + 1)/2)
+            n_bits = int(np.log2(n_leaves))
+            # numerical optimization: precompute all values
+            mapping = [reverse_binary_representation(x, n_bits) for x in range(2**n_bits)]
+            predicted_leaves[:, i] = np.array([mapping[x] for x in predicted_leaves[:, i]])
+        # ------------------------------------------------------------------------------------------------
+
         # By default catboost numbers leaves from 0 to n_leaves - 1, hence we need to add the number of nodes
         # The number we had may be different depending on the depth of the tree
         for i in range(predicted_leaves.shape[1]):
-            # this assumes that trees are perfect binary trees (which is default inn CatBoost)
+            # this assumes that trees are perfect binary trees (which is default in CatBoost)
             predicted_leaves[:, i] += int((self.trees[i].n_nodes - 1)/2)
         return predicted_leaves
 

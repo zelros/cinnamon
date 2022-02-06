@@ -268,7 +268,7 @@ class XGBoostParser(AbstractTreeEnsembleParser):
         return np.array(leaf_indexes, dtype=np.float32)
 
     @staticmethod
-    def add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
+    def _add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
         if type in [TreeBasedDriftValueType.MEAN.value,
                     TreeBasedDriftValueType.MEAN_NORM.value]:
             drift_values[:, (i % prediction_dim)] += drift_values_tree[:, 0]

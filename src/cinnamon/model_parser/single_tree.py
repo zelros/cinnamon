@@ -53,8 +53,6 @@ class BinaryTree:
         for i in range(self.n_nodes):
             if self.children_left[i] == -1:  # if leaf
                 continue  # equal to 0 by default
-            if node_weight_fractions1[i] == 0 or node_weight_fractions2[i] == 0:
-                continue
             else:
                 mean_log_softmax1 = (node_weight_fractions1[self.children_left[i]] * self.values[self.children_left[i]] +
                                      node_weight_fractions1[self.children_right[i]] * self.values[self.children_right[i]] -
@@ -62,8 +60,6 @@ class BinaryTree:
                 mean_log_softmax2 = (node_weight_fractions2[self.children_left[i]] * self.values[self.children_left[i]] +
                                      node_weight_fractions2[self.children_right[i]] * self.values[self.children_right[i]] -
                                      node_weight_fractions2[i] * self.values[i])
-                # the diff of mean_log_softmax2 and mean_log_softmax1 is weighted by the minimum of
-                # node_weight_fractions1[i] and node_weight_fractions2[i]
                 split_contribs[i] = mean_log_softmax2 - mean_log_softmax1
         return split_contribs
 

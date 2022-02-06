@@ -7,6 +7,7 @@ from .abstract_drift_explainer import AbstractDriftExplainer
 from ..model_parser.i_model_parser import IModelParser
 from .adversarial_drift_explainer import AdversarialDriftExplainer
 from ..model_parser.xgboost_parser import XGBoostParser
+from ..model_parser.catboost_parser import CatBoostParser
 
 from .drift_utils import compute_drift_num, plot_drift_num, DriftMetricsNum
 from ..common.dev_utils import safe_isinstance
@@ -98,6 +99,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         self.pred_proba1 = None
         self.pred_proba2 = None
         self._prediction_dim = None
+        self._tree_based_drift_values_sum_check = False
 
     def fit(self, X1: pd.DataFrame, X2: pd.DataFrame, y1: np.array=None, y2: np.array= None,
             sample_weights1: np.array = None, sample_weights2: np.array = None):
@@ -289,6 +291,10 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         -------
         drift_values : numpy array
         """
+        if not self._tree_based_drift_values_sum_check:
+            self._model_parser.check_tree_based_drift_values_sum(self.X1, self.X2, self.sample_weights1,
+                                                                  self.sample_weights2)
+            self._tree_based_drift_values_sum_check = True
         return self._model_parser.compute_tree_based_drift_values(type)
 
     def plot_tree_based_drift_values(self, n: int = 10, type: str = TreeBasedDriftValueType.NODE_SIZE.value) -> None:
@@ -458,10 +464,13 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         elif safe_isinstance(model, 'xgboost.sklearn.XGBRanker'):
             self._model_parser: IModelParser = XGBoostParser(model.get_booster(), 'xgboost.sklearn.XGBRanker',
                                                             iteration_range)
-# because of unresolved pbms with CatBoost().calc_leaf_indexes(), CatBoost is not supported in CinnaMon
-#        elif safe_isinstance(model, 'catboost.core.CatBoostClassifier'):
-#            self._model_parser: IModelParser = CatBoostParser(model, 'catboost.core.CatBoostClassifier',
-#                                                             iteration_range, task='classification')
+        # TODO: because of unresolved pbms with CatBoost().calc_leaf_indexes(), CatBoost is not supported in CinnaMon
+        elif safe_isinstance(model, 'catboost.core.CatBoostClassifier'):
+            self._model_parser: IModelParser = CatBoostParser(model, 'catboost.core.CatBoostClassifier',
+                                                             iteration_range, task='classification')
+        elif safe_isinstance(model, 'catboost.core.CatBoostRegressor'):
+            self._model_parser: IModelParser = CatBoostParser(model, 'catboost.core.CatBoostRegressor',
+                                                              iteration_range, task='regression')
         else:
             raise TypeError(f'The type of model {type(model).__name__} is not supported in ModelDriftExplainer. Only '
                             f'XGBoost is supported currently. Support for other tree based algorithms and model '
