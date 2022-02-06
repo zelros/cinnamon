@@ -3,7 +3,7 @@ from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier, XGBRegressor
 
-from cinnamon.drift import OutputDriftExplainer
+from cinnamon.drift import OutputDriftDetector
 from cinnamon.drift.drift_utils import (DriftMetricsNum, DriftMetricsCat, assert_drift_metrics_equal,
                                         assert_drift_metrics_list_equal)
 from cinnamon.common.stat_utils import BaseStatisticalTestResult, Chi2TestResult
@@ -11,7 +11,7 @@ from cinnamon.common.stat_utils import BaseStatisticalTestResult, Chi2TestResult
 RANDOM_SEED = 2021
 
 
-def test_breast_cancer_binary_classif():
+def test_breast_cancer_OutputDriftDetector():
     dataset = datasets.load_breast_cancer()
     X = pd.DataFrame(dataset.data, columns=dataset.feature_names)
     y = dataset.target
@@ -29,8 +29,8 @@ def test_breast_cancer_binary_classif():
     #  case: prediction_type='proba'
     # ---------------------------------
 
-    output_drift_explainer = OutputDriftExplainer(task='classification', prediction_type='proba')
-    output_drift_explainer.fit(clf.predict_proba(X_train), clf.predict_proba(X_test),
+    output_drift_detector = OutputDriftDetector(task='classification', prediction_type='proba')
+    output_drift_detector.fit(clf.predict_proba(X_train), clf.predict_proba(X_test),
                                y_train, y_test)
 
     # prediction drift
@@ -38,7 +38,7 @@ def test_breast_cancer_binary_classif():
                                             wasserstein=0.024082025832758043,
                                             ks_test=BaseStatisticalTestResult(statistic=0.08323782655969908,
                                                                               pvalue=0.3542889176877513))]
-    assert_drift_metrics_list_equal(output_drift_explainer.get_prediction_drift(),
+    assert_drift_metrics_list_equal(output_drift_detector.get_prediction_drift(),
                                     prediction_drift_ref)
 
     # target drift
@@ -50,19 +50,19 @@ def test_breast_cancer_binary_classif():
                                                                 contingency_table=pd.DataFrame(
                                                                     [[148.0, 250.0], [64.0, 107.0]],
                                                                     index=['X1', 'X2'], columns=[0, 1])))
-    assert_drift_metrics_equal(output_drift_explainer.get_target_drift(),
+    assert_drift_metrics_equal(output_drift_detector.get_target_drift(),
                                target_drift_ref)
 
     # performance_metrics_drift
-    assert output_drift_explainer.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.016039305599991362},
+    assert output_drift_detector.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.016039305599991362},
                                                                       'dataset 2': {'log_loss': 0.11116574995208815}}
 
     # ---------------------------------
     #   case: prediction_type='label'
     # ---------------------------------
 
-    output_drift_explainer2 = OutputDriftExplainer(task='classification', prediction_type='label')
-    output_drift_explainer2.fit(clf.predict(X_train), clf.predict(X_test),
+    output_drift_detector2 = OutputDriftDetector(task='classification', prediction_type='label')
+    output_drift_detector2.fit(clf.predict(X_train), clf.predict(X_test),
                                 y_train, y_test)
 
     # prediction drift
@@ -74,23 +74,23 @@ def test_breast_cancer_binary_classif():
                                                                       contingency_table=pd.DataFrame(
                                                                           [[148.0, 250.0], [61.0, 110.0]],
                                                                           index=['X1', 'X2'], columns=[0, 1])))]
-    assert_drift_metrics_list_equal(output_drift_explainer2.get_prediction_drift(),
+    assert_drift_metrics_list_equal(output_drift_detector2.get_prediction_drift(),
                                     prediction_drift_ref2)
 
     # target drift
-    assert_drift_metrics_equal(output_drift_explainer2.get_target_drift(),
+    assert_drift_metrics_equal(output_drift_detector2.get_target_drift(),
                                target_drift_ref)  # target_drift_ref is the same as in previous case
 
     # performance_metrics_drift
-    assert output_drift_explainer2.get_performance_metrics_drift() == {'dataset 1': {'accuracy': 1.0},
+    assert output_drift_detector2.get_performance_metrics_drift() == {'dataset 1': {'accuracy': 1.0},
                                                                        'dataset 2': {'accuracy': 0.9473684210526315}}
 
     # ---------------------------------
     #   case: prediction_type='raw'
     # ---------------------------------
 
-    output_drift_explainer3 = OutputDriftExplainer(task='classification', prediction_type='raw')
-    output_drift_explainer3.fit(pd.DataFrame(clf.predict(X_train, output_margin=True)),
+    output_drift_detector3 = OutputDriftDetector(task='classification', prediction_type='raw')
+    output_drift_detector3.fit(pd.DataFrame(clf.predict(X_train, output_margin=True)),
                                 clf.predict(X_test, output_margin=True),
                                 y_train, y_test)
 
@@ -99,19 +99,19 @@ def test_breast_cancer_binary_classif():
                                              wasserstein=0.3764544601013494,
                                              ks_test=BaseStatisticalTestResult(statistic=0.08323782655969908,
                                                                                pvalue=0.3542889176877513))]
-    assert_drift_metrics_list_equal(output_drift_explainer3.get_prediction_drift(),
+    assert_drift_metrics_list_equal(output_drift_detector3.get_prediction_drift(),
                                     prediction_drift_ref3)
 
     # target drift
-    assert_drift_metrics_equal(output_drift_explainer3.get_target_drift(),
+    assert_drift_metrics_equal(output_drift_detector3.get_target_drift(),
                                target_drift_ref)  # target_drift_ref is the same as in previous case
 
     # performance_metrics_drift
-    assert output_drift_explainer3.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.016039305803571925},
+    assert output_drift_detector3.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.016039305803571925},
                                                                        'dataset 2': {'log_loss': 0.11116572790125613}}
 
 
-def test_iris_multiclass_classif():
+def test_iris_OutputDriftDetector():
     dataset = datasets.load_iris()
     X = pd.DataFrame(dataset.data, columns=dataset.feature_names)
     y = dataset.target
@@ -128,8 +128,8 @@ def test_iris_multiclass_classif():
     #  case: prediction_type='proba'
     # ---------------------------------
 
-    output_drift_explainer = OutputDriftExplainer(task='classification', prediction_type='proba')
-    output_drift_explainer.fit(clf.predict_proba(X_train), clf.predict_proba(X_test),
+    output_drift_detector = OutputDriftDetector(task='classification', prediction_type='proba')
+    output_drift_detector.fit(clf.predict_proba(X_train), clf.predict_proba(X_test),
                                y_train, y_test)
 
     # prediction drift
@@ -145,7 +145,7 @@ def test_iris_multiclass_classif():
                                             wasserstein=0.14276781702443725,
                                             ks_test=BaseStatisticalTestResult(statistic=0.19047619047619047,
                                                                               pvalue=0.1805850065949114))]
-    assert_drift_metrics_list_equal(output_drift_explainer.get_prediction_drift(),
+    assert_drift_metrics_list_equal(output_drift_detector.get_prediction_drift(),
                                     prediction_drift_ref)
 
     # target drift
@@ -157,19 +157,19 @@ def test_iris_multiclass_classif():
                                                                 contingency_table=pd.DataFrame(
                                                                     [[33.0, 34.0, 38.0], [17.0, 16.0, 12.0]],
                                                                     index=['X1', 'X2'], columns=[0, 1, 2])))
-    assert_drift_metrics_equal(output_drift_explainer.get_target_drift(),
+    assert_drift_metrics_equal(output_drift_detector.get_target_drift(),
                                target_drift_ref)
 
     # performance_metrics_drift
-    assert output_drift_explainer.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.045063073312242824},
+    assert output_drift_detector.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.045063073312242824},
                                                                       'dataset 2': {'log_loss': 0.16192325585418277}}
 
     # ---------------------------------
     #   case: prediction_type='label'
     # ---------------------------------
 
-    output_drift_explainer2 = OutputDriftExplainer(task='classification', prediction_type='label')
-    output_drift_explainer2.fit(clf.predict(X_train), clf.predict(X_test),
+    output_drift_detector2 = OutputDriftDetector(task='classification', prediction_type='label')
+    output_drift_detector2.fit(clf.predict(X_train), clf.predict(X_test),
                                 y_train, y_test)
 
     # prediction drift
@@ -181,23 +181,23 @@ def test_iris_multiclass_classif():
                                                                       contingency_table=pd.DataFrame(
                                                                           [[33.0, 34.0, 38.0], [17.0, 19.0, 9.0]],
                                                                           index=['X1', 'X2'], columns=[0, 1, 2])))]
-    assert_drift_metrics_list_equal(output_drift_explainer2.get_prediction_drift(),
+    assert_drift_metrics_list_equal(output_drift_detector2.get_prediction_drift(),
                                     prediction_drift_ref2)
 
     # target drift
-    assert_drift_metrics_equal(output_drift_explainer2.get_target_drift(),
+    assert_drift_metrics_equal(output_drift_detector2.get_target_drift(),
                                target_drift_ref)  # target_drift_ref is the same as in previous case
 
     # performance_metrics_drift
-    assert output_drift_explainer2.get_performance_metrics_drift() == {'dataset 1': {'accuracy': 1.0},
+    assert output_drift_detector2.get_performance_metrics_drift() == {'dataset 1': {'accuracy': 1.0},
                                                                        'dataset 2': {'accuracy': 0.9333333333333333}}
 
     # ---------------------------------
     #   case: prediction_type='raw'
     # ---------------------------------
 
-    output_drift_explainer3 = OutputDriftExplainer(task='classification', prediction_type='raw')
-    output_drift_explainer3.fit(pd.DataFrame(clf.predict(X_train, output_margin=True)),
+    output_drift_detector3 = OutputDriftDetector(task='classification', prediction_type='raw')
+    output_drift_detector3.fit(pd.DataFrame(clf.predict(X_train, output_margin=True)),
                                 clf.predict(X_test, output_margin=True),
                                 y_train, y_test)
 
@@ -214,19 +214,19 @@ def test_iris_multiclass_classif():
                                              wasserstein=0.5568392310587188,
                                              ks_test=BaseStatisticalTestResult(statistic=0.17142857142857143,
                                                                                pvalue=0.2821678346768163))]
-    assert_drift_metrics_list_equal(output_drift_explainer3.get_prediction_drift(),
+    assert_drift_metrics_list_equal(output_drift_detector3.get_prediction_drift(),
                                     prediction_drift_ref3)
 
     # target drift
-    assert_drift_metrics_equal(output_drift_explainer3.get_target_drift(),
+    assert_drift_metrics_equal(output_drift_detector3.get_target_drift(),
                                target_drift_ref)  # target_drift_ref is the same as in previous case
 
     # performance_metrics_drift
-    assert output_drift_explainer3.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.04506306932086036},
+    assert output_drift_detector3.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.04506306932086036},
                                                                        'dataset 2': {'log_loss': 0.1619232536604007}}
 
 
-def test_boston_regression():
+def test_boston_OutputDriftDetector():
     dataset = datasets.load_boston()
     X = pd.DataFrame(dataset.data, columns=dataset.feature_names)
     y = dataset.target
@@ -240,15 +240,15 @@ def test_boston_regression():
                          use_label_encoder=False)
     model.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=20, verbose=0)
 
-    output_drift_explainer = OutputDriftExplainer(task='regression')
-    output_drift_explainer.fit(model.predict(X_train), model.predict(X_test), y_train, y_test)
+    output_drift_detector = OutputDriftDetector(task='regression')
+    output_drift_detector.fit(model.predict(X_train), model.predict(X_test), y_train, y_test)
 
     # prediction drift
     prediction_drift_ref = [DriftMetricsNum(mean_difference=-0.7889487954289152,
                                             wasserstein=1.0808420273082935,
                                             ks_test=BaseStatisticalTestResult(statistic=0.052743086529884034,
                                                                               pvalue=0.9096081584010306))]
-    assert_drift_metrics_list_equal(output_drift_explainer.get_prediction_drift(),
+    assert_drift_metrics_list_equal(output_drift_detector.get_prediction_drift(),
                                     prediction_drift_ref)
 
     # target drift
@@ -256,11 +256,11 @@ def test_boston_regression():
                                        wasserstein=1.3178114778471604,
                                        ks_test=BaseStatisticalTestResult(statistic=0.07857567647933393,
                                                                          pvalue=0.4968030078636394))
-    assert_drift_metrics_equal(output_drift_explainer.get_target_drift(),
+    assert_drift_metrics_equal(output_drift_detector.get_target_drift(),
                                target_drift_ref)
 
     # performance_metrics_drift
-    assert output_drift_explainer.get_performance_metrics_drift() == {'dataset 1': {'mse': 0.3643813701486243,
+    assert output_drift_detector.get_performance_metrics_drift() == {'dataset 1': {'mse': 0.3643813701486243,
                                                                                     'explained_variance': 0.9960752192224699},
                                                                       'dataset 2': {'mse': 12.419719495108291,
                                                                                     'explained_variance': 0.8095694395593922}}

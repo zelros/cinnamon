@@ -6,9 +6,9 @@ from ..common.dev_utils import find_uniques
 from ..common.stat_utils import compute_regression_metrics, compute_classification_metrics
 
 
-class OutputDriftExplainer:
+class OutputDriftDetector:
 
-    logger = cinnamon_logger.getChild('OutputDriftExplainer')
+    logger = cinnamon_logger.getChild('OutputDriftDetector')
 
     def __init__(self, task: str, prediction_type: str = None, class_names: List[str] = None):
         '''
@@ -70,7 +70,7 @@ class OutputDriftExplainer:
                 return prediction_type
         else:  # task == 'regression'
             if prediction_type is not None:
-                OutputDriftExplainer.logger.warning('Provided value for "prediction_type" is override to "raw"'
+                OutputDriftDetector.logger.warning('Provided value for "prediction_type" is override to "raw"'
                                                     'because task == "regression"')
             return 'raw'
 
