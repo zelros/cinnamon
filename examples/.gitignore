@@ -5,3 +5,4 @@ catboost_info
 data/
 *pending.ipynb
 test*.ipynb
+*debug*.ipynb
