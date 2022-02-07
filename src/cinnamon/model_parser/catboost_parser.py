@@ -28,7 +28,8 @@ class CatBoostParser(AbstractTreeEnsembleParser):
         self.json_cb_model = json.load(open(tmp_file.name, "r"))
         tmp_file.close()
 
-        self.iteration_range = self._get_iteration_range(iteration_range, len(self.json_cb_model['oblivious_trees']))
+        self.original_model_total_iterations = len(self.json_cb_model['oblivious_trees'])
+        self.iteration_range = self._get_iteration_range(iteration_range, self.original_model_total_iterations)
         self.n_iterations = self.iteration_range[1] - self.iteration_range[0]  # corresponds to n trees after iteration_range
 
         # load the CatBoost oblivious trees specific parameters

@@ -1,13 +1,17 @@
 from .i_tree_ensemble_parser import ITreeEnsembleParser
-from typing import List
+from typing import List, Tuple
 import pandas as pd
 import numpy as np
 
 from .single_tree import BinaryTree
 from ..common.math_utils import threshold
 from ..common.constants import TreeBasedDriftValueType
+from ..common.logging import cinnamon_logger
+
 
 class AbstractTreeEnsembleParser(ITreeEnsembleParser):
+
+    logger = cinnamon_logger.getChild('TreeEnsembleParser')
 
     def __init__(self, model, model_type, iteration_range):
         super().__init__()
@@ -16,6 +20,7 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
         self.iteration_range = iteration_range
         self.trees = None
         self.parse(iteration_range)
+        self.original_model_total_iterations = None
 
     def fit(self, X1, X2, sample_weights1, sample_weights2):
         self.node_weights1 = self.get_node_weights(X1, sample_weights=sample_weights1)
@@ -67,11 +72,18 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
         return node_weights
 
     @staticmethod
-    def _get_iteration_range(iteration_range, initial_n_trees):
+    def _get_iteration_range(iteration_range: Tuple[int, int], original_model_total_iterations: int,
+                             best_iteration: int = None):
         if iteration_range is None:
-            iteration_range = (0, initial_n_trees)
-        elif iteration_range[1] > initial_n_trees:
-            raise ValueError(f'"iteration_range" values exceeds {initial_n_trees} which is the number of trees in the model')
+            if best_iteration is not None:
+                iteration_range = (0, best_iteration)
+                AbstractTreeEnsembleParser.logger.warning('By default, the best iteration given by early stopping is used '
+                                                          'to compute "iteration_range". This behavior is consistent with '
+                                                          'model.predict XGBoost default behavior.')
+            else:
+                iteration_range = (0, original_model_total_iterations)
+        elif iteration_range[1] > original_model_total_iterations:
+            raise ValueError(f'"iteration_range" values exceeds the total number of trees in the model')
         else:
             pass
         return iteration_range
