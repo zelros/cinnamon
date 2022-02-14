@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from numpy.testing import assert_allclose
 from scipy.stats import chi2_contingency, distributions
 from sklearn.metrics import log_loss, mean_squared_error, explained_variance_score, roc_auc_score, accuracy_score
 from sklearn.preprocessing import OneHotEncoder
@@ -8,18 +9,66 @@ from pandas.testing import assert_frame_equal
 from .math_utils import sigmoid, softmax
 from typing import List
 from scipy.spatial.distance import jensenshannon
-
+from.constants import FLOAT_atol
 
 # ---------------------------------------
 #        Compute performance metrics ML
 # ---------------------------------------
 
+
+@dataclass
+class PerformanceMetrics:
+    def assert_equal(self, other) -> None:
+        pass
+
+
+@dataclass
+class RegressionMetrics(PerformanceMetrics):
+    mse: float
+    explained_variance: float
+
+    def assert_equal(self, other) -> None:
+        assert isinstance(other, RegressionMetrics)
+        assert_allclose(self.mse, other.mse, atol=FLOAT_atol)
+        assert_allclose(self.explained_variance, other.explained_variance, atol=FLOAT_atol)
+
+
+@dataclass
+class ClassificationMetrics(PerformanceMetrics):
+    accuracy: float
+    log_loss: float = None
+
+    def assert_equal(self, other) -> None:
+        assert isinstance(other, ClassificationMetrics)
+        assert_allclose(self.accuracy, other.accuracy, atol=FLOAT_atol)
+        self.__assert_equal_or_none(self.log_loss, other.log_loss)
+
+    @staticmethod
+    def __assert_equal_or_none(x, y):
+        assert (x is not None) == (y is not None)
+        if x is not None:
+            assert_allclose(x, y, atol=FLOAT_atol)
+
+
 def compute_classification_metrics(y_true: np.array, y_pred: np.array, sample_weights: np.array,
-                                   class_names: List[str], prediction_type: str = 'proba') -> dict:
+                                   class_names: List[str], prediction_type: str = 'proba',
+                                   threshold: float = 0.5) -> ClassificationMetrics:
+    '''
+
+    :param y_true: with labels in (0, ..., n_class - 1)
+    :param y_pred: if prediction_type == 'label', y_pred should be with
+    :param sample_weights:
+    :param class_names:
+    :param prediction_type:
+    :param threshold:
+    :return:
+    '''
     ohe_y_true = OneHotEncoder(categories=[class_names]).fit_transform(y_true.reshape(-1, 1))
 
     # case prediction_type in ['raw', 'proba']
     if prediction_type in ['raw', 'proba']:
+
+        # Compute y_pred_proba
         if prediction_type == 'raw':  # predictions are logit (binary classif) or log softmax (multiclass classif):
             if y_pred.ndim == 1:  # binary classif
                 y_pred_proba = sigmoid(y_pred)
@@ -27,16 +76,24 @@ def compute_classification_metrics(y_true: np.array, y_pred: np.array, sample_we
                 y_pred_proba = softmax(y_pred)
         else:  # prediction_type == 'proba
             y_pred_proba = y_pred
-        return {'log_loss': log_loss(ohe_y_true, y_pred_proba, sample_weight=sample_weights)}
+
+        # Compute y_pred_label
+        if y_pred.ndim == 1:  # binary classif
+            y_pred_label = np.array([int(x > threshold) for x in y_pred_proba])
+        else:  # y_pred.ndim > 1
+            y_pred_label = np.argmax(y_pred_proba, axis=1)
+
+        return ClassificationMetrics(accuracy=accuracy_score(y_true, y_pred_label, sample_weight=sample_weights),
+                                     log_loss=log_loss(ohe_y_true, y_pred_proba, sample_weight=sample_weights))
 
     else:  # case prediction_type == 'label'
-        return {'accuracy': accuracy_score(y_true, y_pred, sample_weight=sample_weights)}
+        return ClassificationMetrics(accuracy=accuracy_score(y_true, y_pred, sample_weight=sample_weights))
 
 
-def compute_regression_metrics(y_true: np.array, y_pred: np.array, sample_weights: np.array) -> dict:
+def compute_regression_metrics(y_true: np.array, y_pred: np.array, sample_weights: np.array) -> RegressionMetrics:
     # TODO: add more metrics here
-    return {'mse': mean_squared_error(y_true, y_pred, sample_weight=sample_weights),
-            'explained_variance': explained_variance_score(y_true, y_pred, sample_weight=sample_weights)}
+    return RegressionMetrics(mse=mean_squared_error(y_true, y_pred, sample_weight=sample_weights),
+                             explained_variance=explained_variance_score(y_true, y_pred, sample_weight=sample_weights))
 
 
 # --------------------------------
@@ -189,8 +246,8 @@ class BaseStatisticalTestResult:
 
     def assert_equal(self, other):
         assert isinstance(other, BaseStatisticalTestResult)
-        assert self.statistic == other.statistic
-        assert self.pvalue == other.pvalue
+        assert_allclose(self.statistic, other.statistic, atol=FLOAT_atol)
+        assert_allclose(self.pvalue, other.pvalue, atol=FLOAT_atol)
 
 
 @dataclass(frozen=True)
@@ -198,20 +255,10 @@ class Chi2TestResult(BaseStatisticalTestResult):
     dof: int = None
     contingency_table: pd.DataFrame = None
 
-    ## see later if this functin is needed
-    #    def __eq__(self, other):
-    #        if not isinstance(other, Chi2TestResult):
-    #            return False
-    #        elif self.statistic != other.statistic or self.pvalue != other.pvalue or self.dof != other.dof:
-    #            return False
-    #        elif not self.contingency_table.equals(other.contingency_table):
-    #            return False
-    #        else:
-    #            return True
-
     def assert_equal(self, other):
         assert isinstance(other, Chi2TestResult)
-        assert self.statistic == other.statistic
-        assert self.pvalue == other.pvalue
+        # atol != FLOAT_atol, bellow. Because pbm with CI in Python 3.6 (result of chi2 test differs in Python 3.6 CI env)
+        assert_allclose(self.statistic, other.statistic, atol=2e-3)
+        assert_allclose(self.pvalue, other.pvalue, atol=4e-2)
         assert self.dof == other.dof
         assert_frame_equal(self.contingency_table, other.contingency_table)

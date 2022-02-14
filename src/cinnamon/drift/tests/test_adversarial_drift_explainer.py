@@ -5,10 +5,11 @@ from sklearn.model_selection import train_test_split
 from cinnamon.common.stat_utils import BaseStatisticalTestResult, Chi2TestResult
 from cinnamon.drift import AdversarialDriftExplainer
 from cinnamon.drift.drift_utils import (DriftMetricsCat, DriftMetricsNum,
-                                        assert_drift_metrics_equal, assert_drift_metrics_list_equal)
+                                        assert_drift_metrics_equal,
+                                        assert_drift_metrics_list_equal)
+from ...common.constants import NUMPY_atol
 
 RANDOM_SEED = 2021
-NUMPY_atol = 1e-8
 
 
 def test_adversarial_drift_explainer():
@@ -83,15 +84,17 @@ def test_adversarial_drift_explainer():
     assert_drift_metrics_list_equal(drift_explainer.get_feature_drifts(),
                                     feature_drifts_ref)
 
-    assert drift_explainer.get_feature_drift('sepal length (cm)') == DriftMetricsNum(
-        mean_difference=-0.18571428571428505, wasserstein=0.19968253968253974,
-        ks_test=BaseStatisticalTestResult(statistic=0.16507936507936508, pvalue=0.3237613427576299))
+    assert_drift_metrics_equal(drift_explainer.get_feature_drift('sepal length (cm)'),
+                               DriftMetricsNum(mean_difference=-0.18571428571428505,
+                                               wasserstein=0.19968253968253974,
+                                               ks_test=BaseStatisticalTestResult(statistic=0.16507936507936508,
+                                                                                 pvalue=0.3237613427576299)))
 
-    assert drift_explainer.get_feature_drift(2) == DriftMetricsNum(mean_difference=-0.2765079365079357,
-                                                                   wasserstein=0.2777777777777778,
-                                                                   ks_test=BaseStatisticalTestResult(
-                                                                       statistic=0.1523809523809524,
-                                                                       pvalue=0.41885114043708227))
+    assert_drift_metrics_equal(drift_explainer.get_feature_drift(2),
+                               DriftMetricsNum(mean_difference=-0.2765079365079357,
+                                               wasserstein=0.2777777777777778,
+                                               ks_test=BaseStatisticalTestResult(statistic=0.1523809523809524,
+                                                                                 pvalue=0.41885114043708227)))
 
     assert drift_explainer.feature_names == ['sepal length (cm)',
                                              'sepal width (cm)',

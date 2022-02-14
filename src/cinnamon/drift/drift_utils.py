@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.testing import assert_allclose
 from scipy.stats import wasserstein_distance, ks_2samp
 import matplotlib.pyplot as plt
 from dataclasses import dataclass
@@ -11,8 +12,10 @@ from ..common.stat_utils import (compute_distributions_cat,
                                  chi2_test,
                                  ks_weighted,
                                  BaseStatisticalTestResult,
-                                 Chi2TestResult
+                                 Chi2TestResult,
+                                 PerformanceMetrics,
                                  )
+from ..common.constants import FLOAT_atol
 
 
 def compute_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array = None, sample_weights2: np.array = None,
@@ -21,7 +24,7 @@ def compute_drift_num(a1: np.array, a2: np.array, sample_weights1: np.array = No
             np.all(sample_weights1 == sample_weights1[0]) and np.all(sample_weights2 == sample_weights2[0])):
         ks_test_object = ks_2samp(a1, a2)
         ks_test = BaseStatisticalTestResult(statistic=ks_test_object.statistic,
-                                                       pvalue=ks_test_object.pvalue)
+                                            pvalue=ks_test_object.pvalue)
     else:
         # 'ks_weighted' return a dictionnary with the good format
         ks_test = ks_weighted(a1, a2, sample_weights1, sample_weights2)
@@ -83,8 +86,8 @@ class DriftMetricsNum(AbstractDriftMetrics):
 
     def assert_equal(self, other) -> None:
         assert isinstance(other, DriftMetricsNum)
-        assert self.mean_difference == other.mean_difference
-        assert self.wasserstein == other.wasserstein
+        assert_allclose(self.mean_difference, other.mean_difference, atol=FLOAT_atol)
+        assert_allclose(self.wasserstein, other.wasserstein, atol=FLOAT_atol)
         self.ks_test.assert_equal(other.ks_test)
 
 
@@ -96,8 +99,8 @@ class DriftMetricsCat(AbstractDriftMetrics):
 
     def assert_equal(self, other) -> None:
         assert isinstance(other, DriftMetricsCat)
-        assert self.wasserstein == other.wasserstein
-        assert self.jensen_shannon == other.jensen_shannon
+        assert_allclose(self.wasserstein, other.wasserstein, atol=FLOAT_atol)
+        assert_allclose(self.jensen_shannon, other.jensen_shannon, atol=FLOAT_atol)
         self.chi2_test.assert_equal(other.chi2_test)
 
 
@@ -110,3 +113,15 @@ def assert_drift_metrics_list_equal(l1: List[AbstractDriftMetrics], l2: List[Abs
     assert len(l1) == len(l2)
     for i in range(len(l1)):
         assert_drift_metrics_equal(l1[i], l2[i])
+
+
+@dataclass
+class PerformanceMetricsDrift:
+    dataset1: PerformanceMetrics
+    dataset2: PerformanceMetrics
+
+
+def assert_performance_metrics_drift_equal(performance_metrics_drift1: PerformanceMetricsDrift,
+                                           performance_metrics_drift2: PerformanceMetricsDrift):
+    performance_metrics_drift1.dataset1.assert_equal(performance_metrics_drift2.dataset1)
+    performance_metrics_drift1.dataset2.assert_equal(performance_metrics_drift2.dataset2)

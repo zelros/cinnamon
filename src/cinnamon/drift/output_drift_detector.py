@@ -3,7 +3,9 @@ from .drift_utils import AbstractDriftMetrics, compute_drift_num, compute_drift_
 from typing import List, Tuple
 from ..common.logging import cinnamon_logger
 from ..common.dev_utils import find_uniques
-from ..common.stat_utils import compute_regression_metrics, compute_classification_metrics
+from ..common.stat_utils import (compute_regression_metrics, compute_classification_metrics,
+                                 RegressionMetrics, ClassificationMetrics)
+from .drift_utils import PerformanceMetricsDrift
 
 
 class OutputDriftDetector:
@@ -323,7 +325,7 @@ class OutputDriftDetector:
             plot_drift_num(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
                            figsize=figsize, bins=bins)
 
-    def get_performance_metrics_drift(self) -> dict:
+    def get_performance_metrics_drift(self) -> PerformanceMetricsDrift:
         """
         Compute performance metrics on dataset 1 and dataset 2.
 
@@ -334,8 +336,14 @@ class OutputDriftDetector:
         if self.y1 is None or self.y2 is None:
             self._raise_no_target_error()
         if self.task == 'regression':
-            return {'dataset 1': compute_regression_metrics(self.y1, self.predictions1, self.sample_weights1),
-                    'dataset 2': compute_regression_metrics(self.y2, self.predictions2, self.sample_weights2)}
+            return PerformanceMetricsDrift(dataset1=compute_regression_metrics(self.y1, self.predictions1,
+                                                                               self.sample_weights1),
+                                           dataset2=compute_regression_metrics(self.y2, self.predictions2,
+                                                                               self.sample_weights2))
         else:  # task == 'classification':
-            return {'dataset 1': compute_classification_metrics(self.y1, self.predictions1, self.sample_weights1, self.class_names, self.prediction_type),
-                    'dataset 2': compute_classification_metrics(self.y2, self.predictions2, self.sample_weights2, self.class_names, self.prediction_type)}
+            return PerformanceMetricsDrift(dataset1=compute_classification_metrics(self.y1, self.predictions1,
+                                                                                   self.sample_weights1, self.class_names,
+                                                                                   self.prediction_type),
+                                           dataset2=compute_classification_metrics(self.y2, self.predictions2,
+                                                                                   self.sample_weights2, self.class_names,
+                                                                                   self.prediction_type))

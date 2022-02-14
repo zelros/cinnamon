@@ -1,7 +1,7 @@
-import logging
 import numpy as np
 import pandas as pd
 from typing import List, Tuple
+from scipy.stats import wasserstein_distance
 
 from .abstract_drift_explainer import AbstractDriftExplainer
 from ..model_parser.i_model_parser import IModelParser
@@ -9,11 +9,13 @@ from .adversarial_drift_explainer import AdversarialDriftExplainer
 from ..model_parser.xgboost_parser import XGBoostParser
 from ..model_parser.catboost_parser import CatBoostParser
 
-from .drift_utils import compute_drift_num, plot_drift_num, DriftMetricsNum
+from .drift_utils import (compute_drift_num, plot_drift_num,
+                          DriftMetricsNum, PerformanceMetricsDrift)
 from ..common.dev_utils import safe_isinstance
 from ..common.stat_utils import (compute_classification_metrics,
                                  compute_regression_metrics)
 from ..common.constants import TreeBasedDriftValueType
+
 
 class ModelDriftExplainer(AbstractDriftExplainer):
     """
@@ -250,7 +252,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             plot_drift_num(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions',
                            figsize=figsize, bins=bins)
 
-    def get_performance_metrics_drift(self) -> dict:
+    def get_performance_metrics_drift(self) -> PerformanceMetricsDrift:
         """
         Compute performance metrics on dataset 1 and dataset 2.
 
@@ -261,11 +263,15 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         if self.y1 is None or self.y2 is None:
             self._raise_no_target_error()
         if self.task == 'classification':
-            return {'dataset 1': compute_classification_metrics(self.y1, self.pred_proba1, self.sample_weights1, self.class_names),
-                    'dataset 2': compute_classification_metrics(self.y2, self.pred_proba2, self.sample_weights2, self.class_names)}
+            return PerformanceMetricsDrift(dataset1=compute_classification_metrics(self.y1, self.pred_proba1,
+                                                                                   self.sample_weights1, self.class_names),
+                                           dataset2=compute_classification_metrics(self.y2, self.pred_proba2,
+                                                                                   self.sample_weights2, self.class_names))
         elif self.task == 'regression':
-            return {'dataset 1': compute_regression_metrics(self.y1, self.predictions1, self.sample_weights1),
-                    'dataset 2': compute_regression_metrics(self.y2, self.predictions2, self.sample_weights2)}
+            return PerformanceMetricsDrift(dataset1=compute_regression_metrics(self.y1, self.predictions1,
+                                                                               self.sample_weights1),
+                                           dataset2=compute_regression_metrics(self.y2, self.predictions2,
+                                                                               self.sample_weights2))
         else:  # ranking
             raise NotImplementedError('No metrics currently implemented for ranking model')
 

@@ -5,16 +5,11 @@ name = "pypi"
 
 [packages]
 cinnamon = {path = './', editable = true}
-treelib = "*"
-matplotlib = "*"
-jupyter = "*"
-catboost = "*"
-pweave = "*"
+#pweave = "*"
 
 [dev-packages]
 build = "*"
 twine = "*"
 pytest = "*"
-
-[requires]
-python_version = "3.9"
+flake8 = "*"
+jupyter = "*"

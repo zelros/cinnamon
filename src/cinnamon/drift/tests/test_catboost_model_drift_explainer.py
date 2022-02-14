@@ -4,13 +4,16 @@ from sklearn import datasets
 from sklearn.model_selection import train_test_split
 from catboost import CatBoostRegressor, CatBoostClassifier
 from cinnamon.drift import ModelDriftExplainer
-from cinnamon.drift.drift_utils import (DriftMetricsNum, DriftMetricsCat, assert_drift_metrics_equal,
-                                        assert_drift_metrics_list_equal)
-from cinnamon.common.stat_utils import BaseStatisticalTestResult, Chi2TestResult
-
+from cinnamon.drift.drift_utils import (DriftMetricsNum, DriftMetricsCat,
+                                        PerformanceMetricsDrift,
+                                        assert_drift_metrics_equal,
+                                        assert_drift_metrics_list_equal,
+                                        assert_performance_metrics_drift_equal)
+from cinnamon.common.stat_utils import (BaseStatisticalTestResult, Chi2TestResult,
+                                        RegressionMetrics, ClassificationMetrics)
+from ...common.constants import NUMPY_atol
 
 RANDOM_SEED = 2021
-NUMPY_atol = 1e-8
 
 
 def test_boston_catboost_ModelDriftExplainer():
@@ -39,10 +42,11 @@ def test_boston_catboost_ModelDriftExplainer():
                                DriftMetricsNum(mean_difference=-0.609240261671129, wasserstein=1.3178114778471604, ks_test=BaseStatisticalTestResult(statistic=0.07857567647933393, pvalue=0.4968030078636394)))
 
     # performance_metrics_drift
-    assert drift_explainer.get_performance_metrics_drift() == {'dataset 1': {'mse': 1.9584429193171917,
-                                                                             'explained_variance': 0.9788618728948271},
-                                                               'dataset 2': {'mse': 9.57426222359859,
-                                                                             'explained_variance': 0.8537685044683866}}
+    assert_performance_metrics_drift_equal(drift_explainer.get_performance_metrics_drift(),
+                                           PerformanceMetricsDrift(RegressionMetrics(mse=1.9584429193171917,
+                                                                                     explained_variance=0.9788618728948271),
+                                                                   RegressionMetrics(mse=9.57426222359859,
+                                                                                     explained_variance=0.8537685044683866)))
 
     # tree_based_drift_values "node_size"
     assert_allclose(drift_explainer.get_tree_based_drift_values(type='node_size'),
@@ -262,8 +266,9 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
                                                                                                        index=['X1', 'X2'], columns=[0, 1]))))
 
     # performance_metrics_drift
-    assert drift_explainer.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.00748801449692523},
-                                                               'dataset 2': {'log_loss': 0.10225262245942275}}
+    assert_performance_metrics_drift_equal(drift_explainer.get_performance_metrics_drift(),
+                                           PerformanceMetricsDrift(ClassificationMetrics(accuracy=1.0, log_loss=0.00748801449692523),
+                                                                   ClassificationMetrics(accuracy=0.9590643274853801, log_loss=0.10225262245942275)))
 
 
     # tree_based_drift_values "node_size"
@@ -589,8 +594,9 @@ def test_iris_catboost_ModelDriftExplainer():
                                                                                                        index=['X1', 'X2'], columns=[0, 1, 2]))))
 
     # performance_metrics_drift
-    assert drift_explainer.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.06196156247077523},
-                                                               'dataset 2': {'log_loss': 0.14716856908904924}}
+    assert_performance_metrics_drift_equal(drift_explainer.get_performance_metrics_drift(),
+                                           PerformanceMetricsDrift(ClassificationMetrics(accuracy=0.9904761904761905, log_loss=0.06196156247077523),
+                                                                   ClassificationMetrics(accuracy=0.9333333333333333, log_loss=0.14716856908904924)))
 
     # tree_based_drift_values "node_size"
     assert_allclose(drift_explainer.get_tree_based_drift_values(type='node_size'),

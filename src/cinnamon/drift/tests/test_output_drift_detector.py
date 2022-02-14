@@ -4,9 +4,13 @@ from sklearn.model_selection import train_test_split
 from xgboost import XGBClassifier, XGBRegressor
 
 from cinnamon.drift import OutputDriftDetector
-from cinnamon.drift.drift_utils import (DriftMetricsNum, DriftMetricsCat, assert_drift_metrics_equal,
-                                        assert_drift_metrics_list_equal)
-from cinnamon.common.stat_utils import BaseStatisticalTestResult, Chi2TestResult
+from cinnamon.drift.drift_utils import (DriftMetricsNum, DriftMetricsCat,
+                                        PerformanceMetricsDrift,
+                                        assert_drift_metrics_equal,
+                                        assert_drift_metrics_list_equal,
+                                        assert_performance_metrics_drift_equal)
+from cinnamon.common.stat_utils import (BaseStatisticalTestResult, Chi2TestResult,
+                                        RegressionMetrics, ClassificationMetrics)
 
 RANDOM_SEED = 2021
 
@@ -54,8 +58,9 @@ def test_breast_cancer_OutputDriftDetector():
                                target_drift_ref)
 
     # performance_metrics_drift
-    assert output_drift_detector.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.016039305599991362},
-                                                                      'dataset 2': {'log_loss': 0.11116574995208815}}
+    assert_performance_metrics_drift_equal(output_drift_detector.get_performance_metrics_drift(),
+                                           PerformanceMetricsDrift(ClassificationMetrics(accuracy=1.0, log_loss=0.016039305599991362),
+                                                                   ClassificationMetrics(accuracy=0.9473684210526315, log_loss=0.11116574995208815)))
 
     # ---------------------------------
     #   case: prediction_type='label'
@@ -82,8 +87,9 @@ def test_breast_cancer_OutputDriftDetector():
                                target_drift_ref)  # target_drift_ref is the same as in previous case
 
     # performance_metrics_drift
-    assert output_drift_detector2.get_performance_metrics_drift() == {'dataset 1': {'accuracy': 1.0},
-                                                                       'dataset 2': {'accuracy': 0.9473684210526315}}
+    assert_performance_metrics_drift_equal(output_drift_detector2.get_performance_metrics_drift(),
+                                           PerformanceMetricsDrift(ClassificationMetrics(accuracy=1.0),
+                                                                   ClassificationMetrics(accuracy=0.9473684210526315)))
 
     # ---------------------------------
     #   case: prediction_type='raw'
@@ -107,8 +113,9 @@ def test_breast_cancer_OutputDriftDetector():
                                target_drift_ref)  # target_drift_ref is the same as in previous case
 
     # performance_metrics_drift
-    assert output_drift_detector3.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.016039305803571925},
-                                                                       'dataset 2': {'log_loss': 0.11116572790125613}}
+    assert_performance_metrics_drift_equal(output_drift_detector3.get_performance_metrics_drift(),
+                                           PerformanceMetricsDrift(ClassificationMetrics(accuracy=1.0, log_loss=0.016039305803571925),
+                                                                   ClassificationMetrics(accuracy=0.9473684210526315, log_loss=0.11116572790125613)))
 
 
 def test_iris_OutputDriftDetector():
@@ -161,8 +168,9 @@ def test_iris_OutputDriftDetector():
                                target_drift_ref)
 
     # performance_metrics_drift
-    assert output_drift_detector.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.045063073312242824},
-                                                                      'dataset 2': {'log_loss': 0.16192325585418277}}
+    assert_performance_metrics_drift_equal(output_drift_detector.get_performance_metrics_drift(),
+                                           PerformanceMetricsDrift(ClassificationMetrics(accuracy=1.0, log_loss=0.045063073312242824),
+                                                                   ClassificationMetrics(accuracy=0.9333333333333333, log_loss=0.16192325585418277)))
 
     # ---------------------------------
     #   case: prediction_type='label'
@@ -189,8 +197,9 @@ def test_iris_OutputDriftDetector():
                                target_drift_ref)  # target_drift_ref is the same as in previous case
 
     # performance_metrics_drift
-    assert output_drift_detector2.get_performance_metrics_drift() == {'dataset 1': {'accuracy': 1.0},
-                                                                       'dataset 2': {'accuracy': 0.9333333333333333}}
+    assert_performance_metrics_drift_equal(output_drift_detector2.get_performance_metrics_drift(),
+                                           PerformanceMetricsDrift(ClassificationMetrics(accuracy=1.0),
+                                                                   ClassificationMetrics(accuracy=0.9333333333333333)))
 
     # ---------------------------------
     #   case: prediction_type='raw'
@@ -222,8 +231,9 @@ def test_iris_OutputDriftDetector():
                                target_drift_ref)  # target_drift_ref is the same as in previous case
 
     # performance_metrics_drift
-    assert output_drift_detector3.get_performance_metrics_drift() == {'dataset 1': {'log_loss': 0.04506306932086036},
-                                                                       'dataset 2': {'log_loss': 0.1619232536604007}}
+    assert_performance_metrics_drift_equal(output_drift_detector3.get_performance_metrics_drift(),
+                                           PerformanceMetricsDrift(ClassificationMetrics(accuracy=1.0, log_loss=0.04506306932086036),
+                                                                   ClassificationMetrics(accuracy=0.9333333333333333, log_loss=0.1619232536604007)))
 
 
 def test_boston_OutputDriftDetector():
@@ -260,7 +270,8 @@ def test_boston_OutputDriftDetector():
                                target_drift_ref)
 
     # performance_metrics_drift
-    assert output_drift_detector.get_performance_metrics_drift() == {'dataset 1': {'mse': 0.3643813701486243,
-                                                                                    'explained_variance': 0.9960752192224699},
-                                                                      'dataset 2': {'mse': 12.419719495108291,
-                                                                                    'explained_variance': 0.8095694395593922}}
+    assert_performance_metrics_drift_equal(output_drift_detector.get_performance_metrics_drift(),
+                                           PerformanceMetricsDrift(RegressionMetrics(mse=0.3643813701486243,
+                                                                                     explained_variance=0.9960752192224699),
+                                                                   RegressionMetrics(mse=12.419719495108291,
+                                                                                     explained_variance=0.8095694395593922)))
