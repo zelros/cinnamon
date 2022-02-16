@@ -34,5 +34,8 @@ class IModelParser:
                                               sample_weights1: np.array) -> np.array:
         pass
 
-    def plot_tree_drift(self, tree_idx: int, type: str, feature_names: List[str]):
+    def plot_tree_drift(self, tree_idx: int, type: str, feature_names: List[str]) -> None:
+        pass
+
+    def check_tree_based_drift_values_sum(self, X1, X2, sample_weights1, sample_weights2) -> None:
         pass

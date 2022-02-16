@@ -1,5 +1,4 @@
 import numpy as np
-from sklearn.metrics import log_loss, mean_squared_error, explained_variance_score, roc_auc_score, accuracy_score
 
 
 def threshold(x: float, max_ratio: float):
@@ -14,18 +13,28 @@ def threshold_array(a: np.array, max_ratio: float):
 
 def softmax(a: np.array):
     """
-    :param a: array of log_softmax
+    :param a: array of log_softmax (should have ndim = 2)
     :return:
     """
     return np.exp(a) / np.sum(np.exp(a), axis=1)[:, None]
 
 
-def compute_classification_metrics(y_true: np.array, y_pred: np.array, sample_weights: np.array) -> dict:
-    # TODO: add more metrics here: accuracy, AUC, etc.
-    return {'log_loss': log_loss(y_true, y_pred, sample_weight=sample_weights)}
+def sigmoid(a: np.array):
+    '''
+    :param a: array of logit (should have ndim = 1)
+    :return:
+    '''
+    return np.exp(a) / (1 + np.exp(a))
 
 
-def compute_regression_metrics(y_true: np.array, y_pred: np.array, sample_weights: np.array) -> dict:
-    # TODO: add more metrics here
-    return {'mse': mean_squared_error(y_true, y_pred, sample_weight=sample_weights),
-            'explained_variance': explained_variance_score(y_true, y_pred, sample_weight=sample_weights)}
+def reverse_binary_representation(n: int, n_bits: int):
+    # return the integer obtained via reversing the order of the binary representation of the integer
+    # -------- example -----------
+    # n = 4, n_bits = 3
+    # binary representation = '100', reversed in '001'
+    # hence the returned integer is 1
+    # ---------------------------
+    assert 0 <= n < 2 ** n_bits
+    binary_representation = np.binary_repr(n, width=n_bits)
+    # we do the loop from left to right so no need to use binary_representation[::-1]
+    return sum([2**i for i, b in enumerate(binary_representation) if b == '1'])

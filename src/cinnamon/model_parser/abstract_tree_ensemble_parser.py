@@ -1,13 +1,17 @@
 from .i_tree_ensemble_parser import ITreeEnsembleParser
-from typing import List
+from typing import List, Tuple
 import pandas as pd
 import numpy as np
 
 from .single_tree import BinaryTree
 from ..common.math_utils import threshold
 from ..common.constants import TreeBasedDriftValueType
+from ..common.logging import cinnamon_logger
+
 
 class AbstractTreeEnsembleParser(ITreeEnsembleParser):
+
+    logger = cinnamon_logger.getChild('TreeEnsembleParser')
 
     def __init__(self, model, model_type, iteration_range):
         super().__init__()
@@ -16,11 +20,11 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
         self.iteration_range = iteration_range
         self.trees = None
         self.parse(iteration_range)
+        self.original_model_total_iterations = None
 
     def fit(self, X1, X2, sample_weights1, sample_weights2):
         self.node_weights1 = self.get_node_weights(X1, sample_weights=sample_weights1)
         self.node_weights2 = self.get_node_weights(X2, sample_weights=sample_weights2)
-        #self._check_drift_values_mean(X1, X2, sample_weights1, sample_weights2)
 
     def get_predictions(self, X: pd.DataFrame, prediction_type: str) -> np.array:
         # return array of shape (nb. obs, nb. class) for multiclass and shape array of shape (nb. obs, )
@@ -68,11 +72,18 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
         return node_weights
 
     @staticmethod
-    def _get_iteration_range(iteration_range, initial_n_trees):
+    def _get_iteration_range(iteration_range: Tuple[int, int], original_model_total_iterations: int,
+                             best_iteration: int = None):
         if iteration_range is None:
-            iteration_range = (0, initial_n_trees)
-        elif iteration_range[1] > initial_n_trees:
-            raise ValueError(f'"iteration_range" values exceeds {initial_n_trees} which is the number of trees in the model')
+            if best_iteration is not None:
+                iteration_range = (0, best_iteration)
+                AbstractTreeEnsembleParser.logger.warning('By default, the best iteration given by early stopping is used '
+                                                          'to compute "iteration_range". This behavior is consistent with '
+                                                          'model.predict XGBoost default behavior.')
+            else:
+                iteration_range = (0, original_model_total_iterations)
+        elif iteration_range[1] > original_model_total_iterations:
+            raise ValueError(f'"iteration_range" values exceeds the total number of trees in the model')
         else:
             pass
         return iteration_range
@@ -85,7 +96,7 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
         if not np.array_equal(self.predict_leaf_with_model_parser(X), self.predict_leaf(X)):
             self._model_parser_error()
 
-    def _check_drift_values_mean(self, X1, X2, sample_weights1, sample_weights2):
+    def check_tree_based_drift_values_sum(self, X1, X2, sample_weights1, sample_weights2) -> None:
         sample_weights1_norm = sample_weights1 / np.sum(sample_weights1)
         sample_weights2_norm = sample_weights2 / np.sum(sample_weights2)
         if self.prediction_dim == 1:
@@ -95,8 +106,9 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
             mean_prediction_diff = np.sum(sample_weights2_norm[:, np.newaxis] * self.predict_raw(X2), axis=0) - \
                                    np.sum(sample_weights1_norm[:, np.newaxis] * self.predict_raw(X1), axis=0)
         stat = abs(self.compute_tree_based_drift_values(type=TreeBasedDriftValueType.MEAN.value).sum(axis=0) - mean_prediction_diff)
-        if any(stat > 10**(-3)):  # any works because difference is an array
-            raise ValueError('Error in computation of feature contributions')
+        if any(stat > 10**(-6)):  # any works because difference is an array
+            raise ValueError('Error in computation of tree based drift values. Your model may not be properly parsed '
+                             'by CinnaMon. You can report the error here: https://github.com/zelros/cinnamon/issues')
 
     def compute_tree_based_drift_values(self, type: str):
         """
@@ -117,12 +129,12 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
         for i, tree in enumerate(self.trees):
             drift_values_tree = tree.compute_drift_values(self.node_weights1[i], self.node_weights2[i],
                                                                   type=type)
-            drift_values = self.add_drift_values(drift_values, drift_values_tree, i,
+            drift_values = self._add_drift_values(drift_values, drift_values_tree, i,
                                                          self.prediction_dim, type)
             drift_values_details.append(drift_values_tree)
         return drift_values  #, drift_values_details
 
-    def plot_tree_drift(self, tree_idx: int, type: str, feature_names: List[str]):
+    def plot_tree_drift(self, tree_idx: int, type: str, feature_names: List[str]) -> None:
         if self.node_weights1 is None:
             raise ValueError('You need to run drift_explainer.fit before calling plot_tree_drift')
         if type not in [e.value for e in TreeBasedDriftValueType]:
@@ -167,7 +179,7 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
         return weights
 
     @staticmethod
-    def add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
+    def _add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
         drift_values += drift_values_tree
         return drift_values
 

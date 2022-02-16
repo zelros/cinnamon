@@ -28,11 +28,14 @@ class UnknownModelParser(IModelParser):
     def compute_tree_based_drift_values(self, type: str) -> np.array:
         self._not_tree_based_model_error()
 
+    def check_tree_based_drift_values_sum(self, X1, X2, sample_weights1, sample_weights2):
+        self._not_tree_based_model_error()
+
     def compute_tree_based_correction_weights(self, X1: pd.DataFrame, max_depth: int, max_ratio: int,
                                               sample_weights1: np.array) -> np.array:
         self._not_tree_based_model_error()
 
-    def plot_tree_drift(self, tree_idx: int, type: str, feature_names: List[str]):
+    def plot_tree_drift(self, tree_idx: int, type: str, feature_names: List[str]) -> None:
         self._not_tree_based_model_error()
 
     @staticmethod

@@ -1,18 +1,21 @@
-import logging
 import numpy as np
 import pandas as pd
 from typing import List, Tuple
+from scipy.stats import wasserstein_distance
 
 from .abstract_drift_explainer import AbstractDriftExplainer
 from ..model_parser.i_model_parser import IModelParser
 from .adversarial_drift_explainer import AdversarialDriftExplainer
 from ..model_parser.xgboost_parser import XGBoostParser
+from ..model_parser.catboost_parser import CatBoostParser
 
-from .drift_utils import compute_drift_num, plot_drift_num
+from .drift_utils import (compute_drift_num, plot_drift_num,
+                          DriftMetricsNum, PerformanceMetricsDrift)
 from ..common.dev_utils import safe_isinstance
-from ..common.math_utils import (compute_classification_metrics,
+from ..common.stat_utils import (compute_classification_metrics,
                                  compute_regression_metrics)
 from ..common.constants import TreeBasedDriftValueType
+
 
 class ModelDriftExplainer(AbstractDriftExplainer):
     """
@@ -98,6 +101,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         self.pred_proba1 = None
         self.pred_proba2 = None
         self._prediction_dim = None
+        self._tree_based_drift_values_sum_check = False
 
     def fit(self, X1: pd.DataFrame, X2: pd.DataFrame, y1: np.array=None, y2: np.array= None,
             sample_weights1: np.array = None, sample_weights2: np.array = None):
@@ -158,7 +162,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
 
         return self
 
-    def get_prediction_drift(self, prediction_type: str = "raw") -> List[dict]:
+    def get_prediction_drift(self, prediction_type: str = "raw") -> List[DriftMetricsNum]:
         """
         Compute drift measures based on model predictions.
 
@@ -176,7 +180,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
 
         Returns
         -------
-        prediction_drift : list of dict
+        prediction_drift : list of DriftMetricsNum object
             Drift measures for each predicted dimension.
         """
         if prediction_type not in ['raw', 'proba']:
@@ -189,7 +193,8 @@ class ModelDriftExplainer(AbstractDriftExplainer):
                                                   self.sample_weights1, self.sample_weights2)
 
     @staticmethod
-    def _compute_prediction_drift(predictions1, predictions2, task, prediction_dim, sample_weights1=None, sample_weights2=None):
+    def _compute_prediction_drift(predictions1, predictions2, task, prediction_dim,
+                                  sample_weights1=None, sample_weights2=None) -> List[DriftMetricsNum]:
         prediction_drift = []
         if task == 'classification':
             if prediction_dim == 1:  # binary classif
@@ -247,7 +252,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             plot_drift_num(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions',
                            figsize=figsize, bins=bins)
 
-    def get_performance_metrics_drift(self) -> dict:
+    def get_performance_metrics_drift(self) -> PerformanceMetricsDrift:
         """
         Compute performance metrics on dataset 1 and dataset 2.
 
@@ -258,11 +263,15 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         if self.y1 is None or self.y2 is None:
             self._raise_no_target_error()
         if self.task == 'classification':
-            return {'dataset 1': compute_classification_metrics(self.y1, self.pred_proba1, self.sample_weights1),
-                    'dataset 2': compute_classification_metrics(self.y2, self.pred_proba2, self.sample_weights2)}
+            return PerformanceMetricsDrift(dataset1=compute_classification_metrics(self.y1, self.pred_proba1,
+                                                                                   self.sample_weights1, self.class_names),
+                                           dataset2=compute_classification_metrics(self.y2, self.pred_proba2,
+                                                                                   self.sample_weights2, self.class_names))
         elif self.task == 'regression':
-            return {'dataset 1': compute_regression_metrics(self.y1, self.predictions1, self.sample_weights1),
-                    'dataset 2': compute_regression_metrics(self.y2, self.predictions2, self.sample_weights2)}
+            return PerformanceMetricsDrift(dataset1=compute_regression_metrics(self.y1, self.predictions1,
+                                                                               self.sample_weights1),
+                                           dataset2=compute_regression_metrics(self.y2, self.predictions2,
+                                                                               self.sample_weights2))
         else:  # ranking
             raise NotImplementedError('No metrics currently implemented for ranking model')
 
@@ -288,9 +297,13 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         -------
         drift_values : numpy array
         """
+        if not self._tree_based_drift_values_sum_check:
+            self._model_parser.check_tree_based_drift_values_sum(self.X1, self.X2, self.sample_weights1,
+                                                                  self.sample_weights2)
+            self._tree_based_drift_values_sum_check = True
         return self._model_parser.compute_tree_based_drift_values(type)
 
-    def plot_tree_based_drift_values(self, n: int = 10, type: str = TreeBasedDriftValueType.NODE_SIZE.value):
+    def plot_tree_based_drift_values(self, n: int = 10, type: str = TreeBasedDriftValueType.NODE_SIZE.value) -> None:
         """
         Plot drift values computed using the tree structures present in the model.
 
@@ -343,14 +356,14 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             drift_values.append(drift_value)
         return np.array(drift_values).reshape(-1, 1)
 
-    def plot_prediction_based_drift_values(self, n: int = 10):
+    def plot_prediction_based_drift_values(self, n: int = 10) -> None:
         """Not implemented"""
         self._raise_not_implem_feature_error()
         drift_values = self.get_prediction_based_drift_values()
         print(drift_values)
         self._plot_drift_values(drift_values, n, self.feature_names)
 
-    def plot_tree_drift(self, tree_idx: int, type: str = TreeBasedDriftValueType.NODE_SIZE.value):
+    def plot_tree_drift(self, tree_idx: int, type: str = TreeBasedDriftValueType.NODE_SIZE.value) -> None:
         """
         Plot the representation of a given tree in the model, to illustrate how
         drift values are computed.
@@ -376,7 +389,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         -------
         None
         """
-        return self._model_parser.plot_tree_drift(tree_idx, type, self.feature_names)
+        self._model_parser.plot_tree_drift(tree_idx, type, self.feature_names)
 
     def get_tree_based_correction_weights(self, max_depth: int = None, max_ratio: int = 10) -> np.array:
         """
@@ -406,7 +419,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         return self._model_parser.compute_tree_based_correction_weights(self.X1, max_depth, max_ratio, self.sample_weights1)
 
     @staticmethod
-    def _get_n_features(model_parser: IModelParser):
+    def _get_n_features(model_parser: IModelParser) -> int:
         return model_parser.n_features
 
     @staticmethod
@@ -457,10 +470,13 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         elif safe_isinstance(model, 'xgboost.sklearn.XGBRanker'):
             self._model_parser: IModelParser = XGBoostParser(model.get_booster(), 'xgboost.sklearn.XGBRanker',
                                                             iteration_range)
-# because of unresolved pbms with CatBoost().calc_leaf_indexes(), CatBoost is not supported in CinnaMon
-#        elif safe_isinstance(model, 'catboost.core.CatBoostClassifier'):
-#            self._model_parser: IModelParser = CatBoostParser(model, 'catboost.core.CatBoostClassifier',
-#                                                             iteration_range, task='classification')
+        # TODO: because of unresolved pbms with CatBoost().calc_leaf_indexes(), CatBoost is not supported in CinnaMon
+        elif safe_isinstance(model, 'catboost.core.CatBoostClassifier'):
+            self._model_parser: IModelParser = CatBoostParser(model, 'catboost.core.CatBoostClassifier',
+                                                             iteration_range, task='classification')
+        elif safe_isinstance(model, 'catboost.core.CatBoostRegressor'):
+            self._model_parser: IModelParser = CatBoostParser(model, 'catboost.core.CatBoostRegressor',
+                                                              iteration_range, task='regression')
         else:
             raise TypeError(f'The type of model {type(model).__name__} is not supported in ModelDriftExplainer. Only '
                             f'XGBoost is supported currently. Support for other tree based algorithms and model '

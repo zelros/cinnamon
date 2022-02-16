@@ -68,8 +68,16 @@ class XGBoostParser(AbstractTreeEnsembleParser):
             self.task = self.objective_task_map[self.model_objective]
         else:
             raise ValueError(f"{self.model_objective} objective for XGBoost model is not supported")
+
+        # handle iteration range
+        self.original_model_total_iterations = parsed_info['num_trees'] // self.prediction_dim
+        if self.original_model.best_ntree_limit != self.original_model_total_iterations:
+            best_iteration = self.original_model.best_ntree_limit
+        else:
+            best_iteration = None
         self.iteration_range = self._get_iteration_range(iteration_range,
-                                                         parsed_info['num_trees'] // self.prediction_dim)
+                                                         self.original_model_total_iterations,
+                                                         best_iteration)
         self.n_iterations = self.iteration_range[1] - self.iteration_range[0]
         # n_trees is not equal to n_iterations if multiclass
         self.n_trees = self.n_iterations * self.prediction_dim
@@ -268,7 +276,7 @@ class XGBoostParser(AbstractTreeEnsembleParser):
         return np.array(leaf_indexes, dtype=np.float32)
 
     @staticmethod
-    def add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
+    def _add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
         if type in [TreeBasedDriftValueType.MEAN.value,
                     TreeBasedDriftValueType.MEAN_NORM.value]:
             drift_values[:, (i % prediction_dim)] += drift_values_tree[:, 0]
