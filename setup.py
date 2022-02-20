@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as f:
 
 setup(
     name="cinnamon",
-    version="0.1.0",
+    version="0.1.1",
     author="Yohann Le Faou",
     author_email="lefaou.yohann@gmail.com",
     description="A monitoring tool for machine learning systems that focus on data drift",
