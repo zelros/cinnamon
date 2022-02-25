@@ -5,7 +5,6 @@ from .single_tree import BinaryTree
 import xgboost
 from .abstract_tree_ensemble_parser import AbstractTreeEnsembleParser
 import struct
-from packaging import version
 from scipy.special import logit
 from ..common.constants import TreeBasedDriftValueType
 
@@ -106,9 +105,8 @@ class XGBoostParser(AbstractTreeEnsembleParser):
 
         # new in XGBoost 1.0 is that the base_score is saved untransformed (https://github.com/dmlc/xgboost/pull/5101)
         # so we have to transform it depending on the objective
-        if version.parse(xgboost.__version__).major >= 1:
-            if parsed_info['model_objective'] in ["binary:logistic", "reg:logistic"]:
-                parsed_info['base_score'] = logit(parsed_info['base_score'])  # pylint: disable=no-member
+        if parsed_info['model_objective'] in ["binary:logistic", "reg:logistic"]:
+            parsed_info['base_score'] = logit(parsed_info['base_score'])
 
         assert parsed_info['booster_type'] == "gbtree", "Only 'gbtree' boosters are supported for XGBoost, " \
                                                         "not '%s'!" % parsed_info['booster_type']
