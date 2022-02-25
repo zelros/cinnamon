@@ -77,7 +77,8 @@ class AbstractDriftExplainer:
     def _raise_no_target_error():
         raise ValueError('Either y1 or y2 was not passed in DriftExplainer.fit')
 
-    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins: int = 10):
+    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins: int = 10,
+                          legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')):
         """
         Plot distributions of labels in order to
         visualize a potential drift of the target labels.
@@ -92,7 +93,10 @@ class AbstractDriftExplainer:
             For regression only. "bins" parameter passed to matplotlib.pyplot.hist function.
 
         figsize : Tuple[int, int] (default=(7, 5))
-            Graphic size passed to matplotlib
+            Graphic size passed to matplotlib.
+
+        legend_labels : Tuple[str, str] (default=('Dataset 1', 'Dataset 2'))
+            Legend labels used for dataset 1 and dataset 2
 
         Returns
         -------
@@ -102,10 +106,10 @@ class AbstractDriftExplainer:
             raise ValueError('"y1" or "y2" argument was not passed to drift_explainer.fit method')
         if self.task == 'classification':
             plot_drift_cat(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
-                           max_n_cat=max_n_cat, figsize=figsize)
+                           max_n_cat=max_n_cat, figsize=figsize, legend_labels=legend_labels)
         elif self.task == 'regression':
             plot_drift_num(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
-                           figsize=figsize, bins=bins)
+                           figsize=figsize, bins=bins, legend_labels=legend_labels)
 
     def get_feature_drifts(self) -> List[AbstractDriftMetrics]:
         """
@@ -167,7 +171,8 @@ class AbstractDriftExplainer:
         return self.get_feature_drifts()[feature_index]
 
     def plot_feature_drift(self, feature: Union[int, str], max_n_cat: int = 20, figsize: Tuple[int, int]=(7, 5),
-                           as_discrete: bool = False, bins: int = 10):
+                           as_discrete: bool = False, bins: int = 10,
+                           legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')):
         """
         Plot distributions of a given feature in order to
         visualize a potential data drift of this feature.
@@ -192,6 +197,9 @@ class AbstractDriftExplainer:
             If a numerical feature is discrete (has few unique values), consider
             it discrete to make the plot.
 
+        legend_labels : Tuple[str, str] (default=('Dataset 1', 'Dataset 2'))
+            Legend labels used for dataset 1 and dataset 2
+
         Returns
         -------
         None
@@ -202,10 +210,11 @@ class AbstractDriftExplainer:
         if feature_index in self.cat_feature_indices or as_discrete:
             plot_drift_cat(self.X1.iloc[:,feature_index].values, self.X2.iloc[:,feature_index].values,
                            self.sample_weights1, self.sample_weights2, title=feature_name, max_n_cat=max_n_cat,
-                           figsize=figsize)
+                           figsize=figsize, legend_labels=legend_labels)
         else:
             plot_drift_num(self.X1.iloc[:,feature_index].values, self.X2.iloc[:,feature_index].values,
-                           self.sample_weights1, self.sample_weights2, title=feature_name, figsize=figsize, bins=bins)
+                           self.sample_weights1, self.sample_weights2, title=feature_name, figsize=figsize, bins=bins,
+                           legend_labels=legend_labels)
 
     def _plot_drift_values(self, drift_values: np.array, n: int, feature_names: List[str]):
         # threshold n if n > drift_values.shape[0]

@@ -16,7 +16,7 @@ class OutputDriftDetector:
         '''
         :param task: 'regression' or 'classification'
         :param prediction_type: for task=classification only ('raw', 'proba', or 'label'). label for the case where the user provides
-        predicted labels and not probabilities (or equivalent). In the regression mode, it will be set to "raw" by default.
+        predicted labels and not probabilities, logit or log softmax. In the regression mode, it will be set to "raw" by default.
         :param class_names: leave None if regression. If classification, labels will based on "y" and "predictions"
         passed to fit, and sorted in alphanumeric order.
         '''
@@ -33,14 +33,24 @@ class OutputDriftDetector:
 
     def fit(self, predictions1: np.array, predictions2: np.array, y1: np.array = None, y2: np.array = None,
             sample_weights1: np.array = None, sample_weights2: np.array = None):
+        '''
+        :param predictions1: if task == 'classification'
+        if prediction_type == 'label', y_pred should be with labels in (0, ..., n_class - 1). If y_pred
+        is predicted proba (or 'raw') (in case of multiclass), then labels should correspond to column index in y_pred.
+
+        :param predictions2: see predictions1
+        :param y1: in classification mode, values of y1 should be in (0, ..., n_class - 1) (OHE labels are not accepted)
+        :param y2: see y1
+        :param sample_weights1:
+        :param sample_weights2:
+        :return:
+        '''
 
         # faire les checks ici
         # if dim == 1, should be of dim (n, ),
         # else, (n, n_class)
         #
         # rmk on parameter : on classif, we only accept pred_proba and raw predictions (not predicted label with threshold)
-
-        # y : we accept ground truth labels only (OHE labels are not accepted). GT labels can be str or int.
         #
         self.predictions1 = self._check_input_predictions(predictions1, 1, self.task, self.prediction_type)
         self.predictions2 = self._check_input_predictions(predictions2, 2, self.task, self.prediction_type)
@@ -98,6 +108,7 @@ class OutputDriftDetector:
             else:  # prediction_type == 'label'
                 if predictions.ndim != 1:
                     raise ValueError(f'Bad shape for "predictions{n}"')
+                predictions.astype(int, casting='safe', copy=False)
         return predictions
 
     @staticmethod
@@ -115,6 +126,7 @@ class OutputDriftDetector:
             else:  # prediction_type == 'label'
                 if y.ndim != 1:
                     raise ValueError(f'Bad shape for "y{n}"')
+                y.astype(int, casting='safe', copy=False)
         return y
 
     @staticmethod
@@ -221,7 +233,8 @@ class OutputDriftDetector:
         return prediction_drift
 
     def plot_prediction_drift(self, bins: int = 10, figsize: Tuple[int, int] = (7, 5),
-                              max_n_cat: int = 20) -> None:
+                              max_n_cat: int = 20,
+                              legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')) -> None:
         """
         Plot histogram of distribution of predictions1 and predictions2
         in order to visualize a potential drift of the predicted values.
@@ -239,6 +252,10 @@ class OutputDriftDetector:
         max_n_cat : int (default=20)
             For multiclass classification only. Maximum number of classes to
             represent on the plot.
+
+        legend_labels : Tuple[str, str] (default=('Dataset 1', 'Dataset 2'))
+            Legend labels used for dataset 1 and dataset 2
+
         Returns
         -------
         None
@@ -247,14 +264,15 @@ class OutputDriftDetector:
         if self.prediction_type in ['raw', 'proba']:
             if self._prediction_dim == 1:  # regression or binary classif
                 plot_drift_num(self.predictions1, self.predictions2, self.sample_weights1, self.sample_weights2,
-                               title=f'Predictions', figsize=figsize, bins=bins)
+                               title=f'Predictions', figsize=figsize, bins=bins, legend_labels=legend_labels)
             else:  # multiclass classif
                 for i in range(self._prediction_dim):
                     plot_drift_num(self.predictions1[:, i], self.predictions2[:, i], self.sample_weights1,
-                                   self.sample_weights2, title=f'{self.class_names[i]}', figsize=figsize, bins=bins)
+                                   self.sample_weights2, title=f'{self.class_names[i]}', figsize=figsize, bins=bins,
+                                   legend_labels=legend_labels)
         if self.prediction_type == 'label':
             plot_drift_cat(self.predictions1, self.predictions2, self.sample_weights1, self.sample_weights2,
-                           title=f'Predictions', figsize=figsize, max_n_cat=max_n_cat)
+                           title=f'Predictions', figsize=figsize, max_n_cat=max_n_cat, legend_labels=legend_labels)
 
     def _raise_no_fit_error(self):
         if self.predictions1 is None or self.predictions2 is None:
@@ -294,7 +312,8 @@ class OutputDriftDetector:
         # TODO: put this in AbstractDriftAnalyzer
         raise ValueError('Either y1 or y2 was not passed to "fit"')
 
-    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins: int = 10) -> None:
+    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins: int = 10,
+                          legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')) -> None:
         # TODO: put this in AbstractDriftAnalyzer
         """
         Plot distributions of labels in order to
@@ -312,6 +331,9 @@ class OutputDriftDetector:
         figsize : Tuple[int, int] (default=(7, 5))
             Graphic size passed to matplotlib
 
+        legend_labels : Tuple[str, str] (default=('Dataset 1', 'Dataset 2'))
+            Legend labels used for dataset 1 and dataset 2
+
         Returns
         -------
         None
@@ -320,10 +342,10 @@ class OutputDriftDetector:
             self._raise_no_target_error()
         if self.task == 'classification':
             plot_drift_cat(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
-                           max_n_cat=max_n_cat, figsize=figsize)
+                           max_n_cat=max_n_cat, figsize=figsize, legend_labels=legend_labels)
         elif self.task == 'regression':
             plot_drift_num(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
-                           figsize=figsize, bins=bins)
+                           figsize=figsize, bins=bins, legend_labels=legend_labels)
 
     def get_performance_metrics_drift(self) -> PerformanceMetricsDrift:
         """

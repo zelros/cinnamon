@@ -209,7 +209,8 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         return prediction_drift
 
     def plot_prediction_drift(self, prediction_type='raw', bins: int = 10,
-                              figsize: Tuple[int, int] = (7, 5)) -> None:
+                              figsize: Tuple[int, int] = (7, 5),
+                              legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')) -> None:
         """
         Plot histogram of distribution of predictions for dataset 1 and dataset 2
         in order to visualize a potential drift of the predicted values.
@@ -231,6 +232,9 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         figsize : Tuple[int, int], optional (default=(7, 5))
             Graphic size passed to matplotlib
 
+        legend_labels : Tuple[str, str] (default=('Dataset 1', 'Dataset 2'))
+            Legend labels used for dataset 1 and dataset 2
+
         Returns
         -------
         None
@@ -247,10 +251,10 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         if self.task == 'classification' and self._model_parser.prediction_dim > 1:  # multiclass classif
             for i in range(self._model_parser.prediction_dim):
                 plot_drift_num(pred1[:, i], pred2[:, i], self.sample_weights1, self.sample_weights2,
-                               title=f'{self.class_names[i]}', figsize=figsize, bins=bins)
+                               title=f'{self.class_names[i]}', figsize=figsize, bins=bins, legend_labels=legend_labels)
         else:  # binary classif or regression
             plot_drift_num(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions',
-                           figsize=figsize, bins=bins)
+                           figsize=figsize, bins=bins, legend_labels=legend_labels)
 
     def get_performance_metrics_drift(self) -> PerformanceMetricsDrift:
         """
