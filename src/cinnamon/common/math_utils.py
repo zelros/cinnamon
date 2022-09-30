@@ -38,3 +38,24 @@ def reverse_binary_representation(n: int, n_bits: int):
     binary_representation = np.binary_repr(n, width=n_bits)
     # we do the loop from left to right so no need to use binary_representation[::-1]
     return sum([2**i for i, b in enumerate(binary_representation) if b == '1'])
+
+
+def divide_with_0(a: np.array, b: np.array) -> np.array:
+    c = np.zeros_like(b)
+    c[b>0] = a[b>0] / b[b>0]
+    return c
+
+
+def map_array_to_bins(a: np.array, bin_edges: np.array) -> np.array:
+    '''
+    example:
+    a = np.array([5, 3, 3, 0])
+    bin_edges = np.array([0, 2, 4, 6])
+    -> result = np.array([3, 1, 1, 0])
+    
+    remark: bin_edes should be sorted in increasing order
+    '''
+    bins_ids = np.digitize(a, bin_edges)
+    bins_ids[bins_ids == len(bin_edges)] = len(bin_edges) - 1
+    return bins_ids - 1
+

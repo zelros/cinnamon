@@ -150,10 +150,18 @@ def compute_distributions_cat(a1: np.array, a2: np.array, sample_weights1=None, 
     return distrib
 
 
-def compute_distributions_num(a1: np.array, a2: np.array, bins, sample_weights1=None, sample_weights2=None):
+def find_optimal_bins_count(a1: np.array, a2: np.array) -> int:
+    # use the "auto" mode of numpy on sample 1 and 2 to compute the optimal number of bins (taking the minimum)
+    return max(min(len(np.histogram_bin_edges(a1, bins='scott')), len(np.histogram_bin_edges(a2, bins='scott')))-1, 1)
+
+
+def compute_distributions_num(a1: np.array, a2: np.array, bins, sample_weights1=None, sample_weights2=None, density=False):
+    # remark: density = True does not correspond to the sum of hist1 (resp. hist2) values being equal to 1.
+    if bins == 'two_heads':
+        bins = find_optimal_bins_count(a1, a2)
     bin_edges = np.histogram_bin_edges(np.concatenate((a1, a2)), bins=bins)
-    hist1 = np.histogram(a1, bins=bin_edges, weights=sample_weights1, density=False)[0]
-    hist2 = np.histogram(a2, bins=bin_edges, weights=sample_weights2, density=False)[0]
+    hist1 = np.histogram(a1, bins=bin_edges, weights=sample_weights1, density=density)[0]
+    hist2 = np.histogram(a2, bins=bin_edges, weights=sample_weights2, density=density)[0]
     return {'bin_edges': bin_edges, 'hist1': hist1, 'hist2': hist2}
 
 

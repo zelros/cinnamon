@@ -1,20 +1,22 @@
 import numpy as np
 import pandas as pd
-from typing import List, Tuple
-from scipy.stats import wasserstein_distance
+from typing import List, Tuple, Union
 
 from .abstract_drift_explainer import AbstractDriftExplainer
 from ..model_parser.i_model_parser import IModelParser
 from .adversarial_drift_explainer import AdversarialDriftExplainer
 from ..model_parser.xgboost_parser import XGBoostParser
 from ..model_parser.catboost_parser import CatBoostParser
+from ..model_parser.base_model_parser import BaseModelParser
 
 from .drift_utils import (compute_drift_num, plot_drift_num,
-                          DriftMetricsNum, PerformanceMetricsDrift)
+                          DriftMetricsNum, PerformanceMetricsDrift,
+                          compute_model_agnostic_drift_value_num,
+                          compute_model_agnostic_drift_value_cat)
 from ..common.dev_utils import safe_isinstance
 from ..common.stat_utils import (compute_classification_metrics,
                                  compute_regression_metrics)
-from ..common.constants import TreeBasedDriftValueType
+from ..common.constants import TreeBasedDriftValueType, ModelAgnosticDriftValueType
 
 
 class ModelDriftExplainer(AbstractDriftExplainer):
@@ -183,14 +185,9 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         prediction_drift : list of DriftMetricsNum object
             Drift measures for each predicted dimension.
         """
-        if prediction_type not in ['raw', 'proba']:
-            raise ValueError(f'Bad value for prediction_type: {prediction_type}')
-        if prediction_type == 'raw':
-            return self._compute_prediction_drift(self.predictions1, self.predictions2, self.task, self._prediction_dim,
-                                                  self.sample_weights1, self.sample_weights2)
-        elif prediction_type == 'proba':
-            return self._compute_prediction_drift(self.pred_proba1, self.pred_proba2, self.task, self._prediction_dim,
-                                                  self.sample_weights1, self.sample_weights2)
+        pred1, pred2 = self._get_predictions(prediction_type)
+        return self._compute_prediction_drift(pred1, pred2, self.task, self._prediction_dim,
+                                                self.sample_weights1, self.sample_weights2) 
 
     @staticmethod
     def _compute_prediction_drift(predictions1, predictions2, task, prediction_dim,
@@ -208,7 +205,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             prediction_drift.append(compute_drift_num(predictions1, predictions2, sample_weights1, sample_weights2))
         return prediction_drift
 
-    def plot_prediction_drift(self, prediction_type='raw', bins: int = 10,
+    def plot_prediction_drift(self, prediction_type='raw', bins = 10,
                               figsize: Tuple[int, int] = (7, 5),
                               legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')) -> None:
         """
@@ -226,8 +223,11 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             (multiclass classification), regular predictions (regression)
             - "proba" : predicted probabilities (only for classification models)
 
-        bins : int (default=100)
-            "bins" parameter passed to matplotlib.pyplot.hist function.
+        bins : int or sequence of scalars or str, optional (default=10)
+            For regression only. 'two_heads' corresponds to a number of bins which is the minimum of
+            of the optimal number of bins for dataset 1 and dataset 2 taken separately.
+            Other value of "bins" parameter passed to matplotlib.pyplot.hist function are also
+            accepted.
 
         figsize : Tuple[int, int], optional (default=(7, 5))
             Graphic size passed to matplotlib
@@ -239,14 +239,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         -------
         None
         """
-        if self.predictions1 is None:
-            raise ValueError('You must call the fit method before ploting drift')
-        if prediction_type not in ['raw', 'proba']:
-            raise ValueError(f'Bad value for prediction_type: {prediction_type}')
-        if prediction_type == 'raw':
-            pred1, pred2 = self.predictions1, self.predictions2
-        else:
-            pred1, pred2 = self.pred_proba1, self.pred_proba2
+        pred1, pred2 = self._get_predictions(prediction_type)
 
         if self.task == 'classification' and self._model_parser.prediction_dim > 1:  # multiclass classif
             for i in range(self._model_parser.prediction_dim):
@@ -338,33 +331,45 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         drift_values = self.get_tree_based_drift_values(type=type)
         self._plot_drift_values(drift_values, n, self.feature_names)
 
-    def get_prediction_based_drift_values(self) -> np.array:
-        """Not implemented"""
-        self._raise_not_implem_feature_error()
-        return self._compute_prediction_based_drift_values(self.X1, self.X2, self.sample_weights1, self.sample_weights2,
-                                                           self.predictions1, self.n_features, self.cat_feature_indices,
-                                                           self.feature_names)
+    def _get_predictions(self, prediction_type: str) -> Tuple[np.array, np.array]:
+        if self.predictions1 is None:
+            raise ValueError('You must call the fit method before ploting drift')
+        if prediction_type not in ['raw', 'proba']:
+            raise ValueError(f'Bad value for prediction_type: {prediction_type}')
+        if prediction_type == 'raw':
+            pred1, pred2 = self.predictions1, self.predictions2
+        else:
+            pred1, pred2 = self.pred_proba1, self.pred_proba2
+        return pred1, pred2
 
-    def _compute_prediction_based_drift_values(self, X1: pd.DataFrame, X2: pd.DataFrame, sample_weights1: np.array,
-                                               sample_weights2: np.array, predictions1: np.array, n_features: int,
-                                               cat_feature_indices: List[int], feature_names: List[str]) -> np.array:
+    def get_model_agnostic_drift_values(self, type: str = ModelAgnosticDriftValueType.MEAN.value, prediction_type: str = "raw",
+                                        max_ratio: float = 10, max_n_cat: int = 20) -> np.array:
+        pred1, pred2 = self._get_predictions(prediction_type)
+        return self._compute_model_agnostic_drift_values(self.X1, self.X2, type, self.sample_weights1, self.sample_weights2,
+                                                           pred1, pred2, self.n_features, self.cat_feature_indices,
+                                                           max_ratio, max_n_cat)
+
+    @staticmethod
+    def _compute_model_agnostic_drift_values(X1: pd.DataFrame, X2: pd.DataFrame, type: str, sample_weights1: np.array,
+                                               sample_weights2: np.array, predictions1: np.array, predictions2: np.array, n_features: int,
+                                               cat_feature_indices: List[int], max_ratio: float, max_n_cat: int) -> np.array:
+
         drift_values = []
         for i in range(n_features):
-            print(i, feature_names[i])
             if i in cat_feature_indices:
-                raise NotImplementedError
-                # drift_value = compute_prediction_based_drift_value_cat()
+                drift_value = compute_model_agnostic_drift_value_cat(X1.iloc[:, i].values, X2.iloc[:, i].values, type,
+                                                                        sample_weights1, sample_weights2, predictions1, predictions2,
+                                                                        max_ratio, max_n_cat)
             else:
-                drift_value = compute_prediction_based_drift_value_num(X1.iloc[:, i].values, X2.iloc[:, i].values,
-                                                                       sample_weights1, sample_weights2, predictions1)
+                drift_value = compute_model_agnostic_drift_value_num(X1.iloc[:, i].values, X2.iloc[:, i].values, type, 
+                                                                    sample_weights1, sample_weights2,
+                                                                    predictions1, predictions2, bins='two_heads', max_ratio=max_ratio)
             drift_values.append(drift_value)
-        return np.array(drift_values).reshape(-1, 1)
-
-    def plot_prediction_based_drift_values(self, n: int = 10) -> None:
-        """Not implemented"""
-        self._raise_not_implem_feature_error()
-        drift_values = self.get_prediction_based_drift_values()
-        print(drift_values)
+        return np.array(drift_values)
+    
+    def plot_model_agnostic_drift_values(self, n: int = 10, type: str = ModelAgnosticDriftValueType.MEAN.value, prediction_type: str = "raw",
+                                        max_ratio: float = 10, max_n_cat: int = 20) -> None:
+        drift_values = self.get_model_agnostic_drift_values(type, prediction_type, max_ratio, max_n_cat)
         self._plot_drift_values(drift_values, n, self.feature_names)
 
     def plot_tree_drift(self, tree_idx: int, type: str = TreeBasedDriftValueType.NODE_SIZE.value) -> None:
@@ -482,11 +487,10 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             self._model_parser: IModelParser = CatBoostParser(model, 'catboost.core.CatBoostRegressor',
                                                               iteration_range, task='regression')
         else:
-            raise TypeError(f'The type of model {type(model).__name__} is not supported in ModelDriftExplainer. Only '
-                            f'XGBoost is supported currently. Support for other tree based algorithms and model '
-                            f'agnostic methods only relying on model.predict are under development')
-            #  model agnostic methods only relying on model.predict are under development
-            #  self._model_parser: IModelParser = UnknownModelParser(model, 'unknown')
+            self._model_parser: IModelParser = BaseModelParser(model, 'unknown')
+            ModelDriftExplainer.logger.info(f'The model of type {type(model).__name__} has no specific support in ' 
+                            'ModelDriftExplainer. However model agnostic methods only relying on model.predict calls are '
+                            'available')
         if self._model_parser.task == 'ranking':
             ModelDriftExplainer.logger.warning('A ranking model was passed to DriftExplainer. It will be treated similarly as'
                                                ' regression model but there is no warranty about the result')
@@ -495,18 +499,3 @@ class ModelDriftExplainer(AbstractDriftExplainer):
     def _raise_not_implem_feature_error():
         raise NotImplementedError('Model agnostic drift values (only based on model predictions) will be '
                                   'implemented in future version')
-
-
-def compute_prediction_based_drift_value_num(a1: np.array, a2: np.array, sample_weights1: np.array,
-                                             sample_weights2: np.array, predictions1: np.array):
-    correction_weights = (AdversarialDriftExplainer(seed=2021, verbosity=True, learning_rate=0.2, tree_method='hist')
-                          .fit(a1, a2, sample_weights1=sample_weights1, sample_weights2=sample_weights2)
-                          .get_adversarial_correction_weights(max_ratio=10))
-    # wasserstein distance between distrib of prediction 1 with original weights, and corrected weights
-    drift_value = wasserstein_distance(predictions1, predictions1, correction_weights, sample_weights1)
-    plot_drift_num(predictions1, predictions1, correction_weights, sample_weights1)
-    return drift_value
-
-
-def compute_prediction_based_drift_value_cat():
-    pass

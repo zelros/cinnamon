@@ -77,7 +77,7 @@ class AbstractDriftExplainer:
     def _raise_no_target_error():
         raise ValueError('Either y1 or y2 was not passed in DriftExplainer.fit')
 
-    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins: int = 10,
+    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins = 10,
                           legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')):
         """
         Plot distributions of labels in order to
@@ -89,8 +89,11 @@ class AbstractDriftExplainer:
             For multiclass classification only. Maximum number of classes to
             represent on the plot.
 
-        bins : int (default=100)
-            For regression only. "bins" parameter passed to matplotlib.pyplot.hist function.
+        bins : int or sequence of scalars or str, optional (default=10)
+            For regression only. 'two_heads' corresponds to a number of bins which is the minimum of
+            of the optimal number of bins for dataset 1 and dataset 2 taken separately.
+            Other value of "bins" parameter passed to matplotlib.pyplot.hist function are also
+            accepted.
 
         figsize : Tuple[int, int] (default=(7, 5))
             Graphic size passed to matplotlib.
@@ -171,7 +174,7 @@ class AbstractDriftExplainer:
         return self.get_feature_drifts()[feature_index]
 
     def plot_feature_drift(self, feature: Union[int, str], max_n_cat: int = 20, figsize: Tuple[int, int]=(7, 5),
-                           as_discrete: bool = False, bins: int = 10,
+                           as_discrete: bool = False, bins = 10,
                            legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')):
         """
         Plot distributions of a given feature in order to
@@ -187,8 +190,11 @@ class AbstractDriftExplainer:
             categorical feature (not supported currently) or
             if as_discrete == True
 
-        bins : int (default=100)
-            (numerical feature only) "bins" parameter passed to matplotlib.pyplot.hist function.
+        bins : int or sequence of scalars or str, optional (default=10)
+            For regression only. 'two_heads' corresponds to a number of bins which is the minimum of
+            of the optimal number of bins for dataset 1 and dataset 2 taken separately.
+            Other value of "bins" parameter passed to matplotlib.pyplot.hist function are also
+            accepted.
 
         figsize : Tuple[int, int] (default=(7, 5))
             Graphic size passed to matplotlib
