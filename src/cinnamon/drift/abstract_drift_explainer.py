@@ -268,13 +268,14 @@ class AbstractDriftExplainer:
         pass
     """
 
-    def _check_fit_arguments(self, X1, X2, y1, y2, sample_weights1, sample_weights2):
+    def _check_fit_arguments(self, X1, X2, y1, y2, sample_weights1, sample_weights2, cat_feature_indices):
         self.sample_weights1 = self._check_sample_weights(sample_weights1, X1)
         self.sample_weights2 = self._check_sample_weights(sample_weights2, X2)
         self.X1, self.X2 = self._check_X(X1, X2)
         self._check_X_shape(self.X1, self.X2)
         self.y1 = y1
         self.y2 = y2
+        self.cat_feature_indices = cat_feature_indices
 
     @staticmethod
     def _check_sample_weights(sample_weights, X):

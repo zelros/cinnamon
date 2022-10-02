@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from xgboost import XGBClassifier
 from sklearn.model_selection import KFold
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from .abstract_drift_explainer import AbstractDriftExplainer
 from ..common.math_utils import threshold_array
 
@@ -97,7 +97,8 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
         self.kf_splits: List[Tuple[np.array, np.array]] = []
 
     def fit(self, X1: pd.DataFrame, X2: pd.DataFrame, y1: np.array = None, y2: np.array = None,
-            sample_weights1: np.array = None, sample_weights2: np.array = None):
+            sample_weights1: np.array = None, sample_weights2: np.array = None,
+            cat_feature_indices: Optional[List[int]] = None):
         """
         Fit the adversarial drift explainer to dataset 1 and dataset 2.
         Only X1, X2, sample_weights1 and sample_weights2 are used to build the
@@ -134,12 +135,12 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
             The fitted adversarial drift explainer.
         """
         # Check arguments and save them as attributes
-        self._check_fit_arguments(X1, X2, y1, y2, sample_weights1, sample_weights2)
+        self._check_fit_arguments(X1, X2, y1, y2, sample_weights1, sample_weights2, cat_feature_indices)
 
         # set some class attributes
         self.n_features = self._get_n_features(self.X1)
         self.feature_names = self._get_feature_names(self.X1)
-        self.cat_feature_indices = self._get_cat_feature_indices()
+        self.cat_feature_indices = self._get_cat_feature_indices(cat_feature_indices)
         self.class_names = self._get_class_names(self.task, self.y1, self.y2)
         self.feature_subset = self._get_feature_subset(self.feature_subset, self.X1)
         self.task = self._get_task(y1, y2)
@@ -272,9 +273,8 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
         return X1.columns.to_list()
 
     @staticmethod
-    def _get_cat_feature_indices():
-        # FIXME: problem here with cat features... and add it to the test
-        return []
+    def _get_cat_feature_indices(cat_feature_indices: Optional[List[int]]):
+        return cat_feature_indices if cat_feature_indices else []
 
     @staticmethod
     def _get_class_names(task: str, y1, y2):

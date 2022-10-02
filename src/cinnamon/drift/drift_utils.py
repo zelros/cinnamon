@@ -185,7 +185,7 @@ def compute_model_agnostic_drift_value_cat_one_way(a1: np.array, a2: np.array, t
                                              sample_weights2: np.array, predictions2: np.array,
                                              max_ratio: float, max_n_cat: int) -> List[float]:
     distributions = compute_distributions_cat(a1, a2, sample_weights1, sample_weights2, max_n_cat=max_n_cat)
-    plot_drift_cat(a1=a1, a2=a2, sample_weights1=sample_weights1, sample_weights2=sample_weights2)
+    #plot_drift_cat(a1=a1, a2=a2, sample_weights1=sample_weights1, sample_weights2=sample_weights2)
     ratio = np.array([probas[0] / probas[1] if probas[1] > 0 else 0 for probas in distributions.values()])
     thresholded_ratio = threshold_array(ratio, max_ratio=max_ratio)
     thresholded_ratio_dict = {k: thresholded_ratio[i] for i, k in enumerate(distributions.keys())}

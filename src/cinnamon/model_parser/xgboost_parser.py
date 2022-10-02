@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import Tuple
+from typing import Tuple, Optional
 from .single_tree import BinaryTree
 import xgboost
 from .abstract_tree_ensemble_parser import AbstractTreeEnsembleParser
@@ -53,10 +53,7 @@ class XGBoostParser(AbstractTreeEnsembleParser):
                           'reg:tweedie': 'regression',
                           }
 
-    def __init__(self, model, model_type, iteration_range):
-        super().__init__(model, model_type, iteration_range)
-
-    def parse(self, iteration_range: Tuple[int, int]):
+    def parse(self, iteration_range: Optional[Tuple[int, int]] = None):
         parsed_info = self._parse_binary(self.original_model.save_raw().lstrip(b'binf'))
         self.max_depth = parsed_info['max_depth']
         self.n_features = parsed_info['n_features']

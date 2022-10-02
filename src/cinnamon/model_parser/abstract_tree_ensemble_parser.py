@@ -1,5 +1,5 @@
-from .i_tree_ensemble_parser import ITreeEnsembleParser
-from typing import List, Tuple
+from .abstract_model_parser import AbstractModelParser
+from typing import List, Tuple, Optional
 import pandas as pd
 import numpy as np
 
@@ -9,40 +9,31 @@ from ..common.constants import TreeBasedDriftValueType
 from ..common.logging import cinnamon_logger
 
 
-class AbstractTreeEnsembleParser(ITreeEnsembleParser):
+class AbstractTreeEnsembleParser(AbstractModelParser):
 
     logger = cinnamon_logger.getChild('TreeEnsembleParser')
 
     def __init__(self, model, model_type, iteration_range):
-        super().__init__()
-        self.original_model = model
-        self.model_type = model_type
+        super().__init__(model, model_type)
+        self.n_trees = None
+        self.max_depth = None
+        self.trees = None
+        self.model_objective = None
+        self.n_iterations = None
+        self.base_score = None  # bias
+        self.node_weights1 = None
+        self.node_weights2 = None
         self.iteration_range = iteration_range
         self.trees = None
         self.parse(iteration_range)
         self.original_model_total_iterations = None
 
+    def parse(self, iteration_range: Optional[Tuple[int, int]] = None):
+        pass
+
     def fit(self, X1, X2, sample_weights1, sample_weights2):
         self.node_weights1 = self.get_node_weights(X1, sample_weights=sample_weights1)
         self.node_weights2 = self.get_node_weights(X2, sample_weights=sample_weights2)
-
-    def get_predictions(self, X: pd.DataFrame, prediction_type: str) -> np.array:
-        # return array of shape (nb. obs, nb. class) for multiclass and shape array of shape (nb. obs, )
-        # for binary class and regression
-        """
-
-        :param X:
-        :param prediction_type: "raw" or "proba"
-        :return:
-        """
-        # array of shape (nb. obs, nb. class) for multiclass and shape array of shape (nb. obs, )
-        # for binary class and regression
-        if prediction_type == 'raw':
-            return self.predict_raw(X)
-        elif prediction_type == 'proba':
-            return self.predict_proba(X)
-        else:
-            raise ValueError(f'Bad value for prediction_type: {prediction_type}')
 
     def get_node_weights(self, X: pd.DataFrame, sample_weights: np.array) -> List[np.array]:
         """return sum of observation weights in each node of each tree of the model"""
@@ -184,12 +175,6 @@ class AbstractTreeEnsembleParser(ITreeEnsembleParser):
         return drift_values
 
     def predict_leaf(self, X: pd.DataFrame) -> np.array:  # output dtype = np.int32
-        pass
-
-    def predict_raw(self, X: pd.DataFrame) -> np.array:
-        pass
-
-    def predict_proba(self, X: pd.DataFrame) -> np.array:
         pass
 
     def predict_leaf_with_model_parser(self, X: pd.DataFrame) -> np.array:

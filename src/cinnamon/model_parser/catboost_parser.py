@@ -4,7 +4,7 @@ import json
 from .single_tree import BinaryTree
 import catboost
 import tempfile
-from typing import Tuple
+from typing import Tuple, Optional
 from .abstract_tree_ensemble_parser import AbstractTreeEnsembleParser
 from ..common.math_utils import reverse_binary_representation
 
@@ -22,7 +22,7 @@ class CatBoostParser(AbstractTreeEnsembleParser):
         super().__init__(model, model_type, iteration_range)
         self.task = task
 
-    def parse(self, iteration_range: Tuple[int, int] = None):
+    def parse(self, iteration_range: Optional[Tuple[int, int]] = None):
         tmp_file = tempfile.NamedTemporaryFile()
         self.original_model.save_model(tmp_file.name, format="json")
         self.json_cb_model = json.load(open(tmp_file.name, "r"))

@@ -1,9 +1,9 @@
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, Union
+from typing import List, Tuple, Optional
 
 from .abstract_drift_explainer import AbstractDriftExplainer
-from ..model_parser.i_model_parser import IModelParser
+from ..model_parser.abstract_model_parser import AbstractModelParser
 from .adversarial_drift_explainer import AdversarialDriftExplainer
 from ..model_parser.xgboost_parser import XGBoostParser
 from ..model_parser.catboost_parser import CatBoostParser
@@ -36,6 +36,11 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         the trees built during [10, 20) (half open set) iterations are used.
         If None, all trees are used.
 
+    task : string
+        Task corresponding to the (X, Y) data. Either "regression", "classification",
+        or "ranking". "task" must be provided if the model is treated as a black box predictor
+        (no specific parser for the model).
+    
     Attributes
     ----------
     predictions1 : numpy array
@@ -63,10 +68,6 @@ class ModelDriftExplainer(AbstractDriftExplainer):
     target_drift : dict
         Drift measures for the labels y.
 
-    task : string
-        Task corresponding to the (X, Y) data. Either "regression", "classification",
-        or "ranking".
-
     n_features : int
         Number of features in input X.
 
@@ -90,10 +91,10 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         sample_weights1 and sample_weights2 arrays passed to the "fit" method.
     """
 
-    def __init__(self, model, iteration_range: Tuple[int, int] = None):
+    def __init__(self, model, iteration_range: Tuple[int, int] = None, task: Optional[str] = None):
         super().__init__()
         # Parse model
-        self._parse_model(model, iteration_range)
+        self._parse_model(model, iteration_range, task)
         self.iteration_range = self._model_parser.iteration_range
         self.task = self._model_parser.task
 
@@ -106,7 +107,8 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         self._tree_based_drift_values_sum_check = False
 
     def fit(self, X1: pd.DataFrame, X2: pd.DataFrame, y1: np.array=None, y2: np.array= None,
-            sample_weights1: np.array = None, sample_weights2: np.array = None):
+            sample_weights1: np.array = None, sample_weights2: np.array = None,
+            cat_feature_indices: Optional[List[int]] = None):
         """
         Fit the model drift explainer to dataset 1 and dataset 2.
 
@@ -134,23 +136,26 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             Array of weights that are assigned to individual samples of dataset 2
             If None, then each sample of dataset 2 is given unit weight.
 
+        cat_feature_indices: TODO
+
         Returns
         -------
         ModelDriftExplainer
             The fitted model drift explainer.
         """
         # Check arguments and save them as attributes
-        self._check_fit_arguments(X1, X2, y1, y2, sample_weights1, sample_weights2)
+        self._check_fit_arguments(X1, X2, y1, y2, sample_weights1, sample_weights2, cat_feature_indices)
 
         # check coherence between parsed model and fit arguments
         self._check_coherence()
 
         # set some class attributes
-        self.n_features = self._get_n_features(self._model_parser)
+        self.n_features = self._get_n_features(self._model_parser, self.X1)
         self.feature_names = self._get_feature_names(self.X1, self.X2, self._model_parser)
-        self.cat_feature_indices = self._get_cat_feature_indices(self._model_parser)
-        self.class_names = self._get_class_names(self.task, self._model_parser)
-        self._prediction_dim = self._model_parser.prediction_dim
+        self.cat_feature_indices = self._get_cat_feature_indices(self.cat_feature_indices)
+        self._prediction_dim = self._model_parser.get_prediction_dim(self.X1)
+        self.class_names = self._get_class_names(self.task, self._model_parser, self._prediction_dim)
+
 
         # compute model predictions
         self.predictions1 = self._model_parser.get_predictions(self.X1, prediction_type="raw")
@@ -241,8 +246,8 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         """
         pred1, pred2 = self._get_predictions(prediction_type)
 
-        if self.task == 'classification' and self._model_parser.prediction_dim > 1:  # multiclass classif
-            for i in range(self._model_parser.prediction_dim):
+        if self.task == 'classification' and self._prediction_dim > 1:  # multiclass classif
+            for i in range(self._prediction_dim):
                 plot_drift_num(pred1[:, i], pred2[:, i], self.sample_weights1, self.sample_weights2,
                                title=f'{self.class_names[i]}', figsize=figsize, bins=bins, legend_labels=legend_labels)
         else:  # binary classif or regression
@@ -344,6 +349,8 @@ class ModelDriftExplainer(AbstractDriftExplainer):
 
     def get_model_agnostic_drift_values(self, type: str = ModelAgnosticDriftValueType.MEAN.value, prediction_type: str = "raw",
                                         max_ratio: float = 10, max_n_cat: int = 20) -> np.array:
+        if type not in [x.value for x in ModelAgnosticDriftValueType]:
+            raise ValueError(f'Bad value for "type": {type}')
         pred1, pred2 = self._get_predictions(prediction_type)
         return self._compute_model_agnostic_drift_values(self.X1, self.X2, type, self.sample_weights1, self.sample_weights2,
                                                            pred1, pred2, self.n_features, self.cat_feature_indices,
@@ -369,6 +376,8 @@ class ModelDriftExplainer(AbstractDriftExplainer):
     
     def plot_model_agnostic_drift_values(self, n: int = 10, type: str = ModelAgnosticDriftValueType.MEAN.value, prediction_type: str = "raw",
                                         max_ratio: float = 10, max_n_cat: int = 20) -> None:
+        if type not in [x.value for x in ModelAgnosticDriftValueType]:
+            raise ValueError(f'Bad value for "type": {type}')
         drift_values = self.get_model_agnostic_drift_values(type, prediction_type, max_ratio, max_n_cat)
         self._plot_drift_values(drift_values, n, self.feature_names)
 
@@ -428,11 +437,14 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         return self._model_parser.compute_tree_based_correction_weights(self.X1, max_depth, max_ratio, self.sample_weights1)
 
     @staticmethod
-    def _get_n_features(model_parser: IModelParser) -> int:
-        return model_parser.n_features
+    def _get_n_features(model_parser: AbstractModelParser, X1) -> int:
+        if model_parser.n_features:
+            return model_parser.n_features
+        else:
+            return X1.shape[1]
 
     @staticmethod
-    def _get_feature_names(X1: pd.DataFrame, X2: pd.DataFrame, model_parser: IModelParser):
+    def _get_feature_names(X1: pd.DataFrame, X2: pd.DataFrame, model_parser: AbstractModelParser):
         # we take feature names in X1 and X2 column names if provided
         if list(X1.columns) != list(X2.columns):
             raise ValueError('"X1.columns" and "X2.columns" are not equal')
@@ -446,51 +458,61 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         return feature_names
 
     @staticmethod
-    def _get_cat_feature_indices(model_parser: IModelParser):
-        if model_parser.model_type in ['catboost.core.CatBoostClassifier', 'catboost.core.CatBoostRegressor']:
-            return model_parser.cat_feature_indices
+    def _get_cat_feature_indices(cat_feature_indices: Optional[List[int]]):
+        if cat_feature_indices:
+            return cat_feature_indices
         else:
-            return []  # TODO: maybe add binary features to cat_feature_indices
+            return []
 
     @staticmethod
-    def _get_class_names(task, model_parser: IModelParser) -> List[str]:
+    def _get_class_names(task, model_parser: AbstractModelParser, prediction_dim) -> List[str]:
         if task == 'regression':
             return []
         elif model_parser.model_type == 'catboost.core.CatBoostClassifier':
             return model_parser.class_names
         else:
-            n_class = 2 if model_parser.prediction_dim == 1 else model_parser.prediction_dim
+            n_class = 2 if prediction_dim == 1 else prediction_dim
             return [str(i) for i in range(n_class)]
 
     def _check_coherence(self):
-        if self._model_parser.n_features != self.X1.shape[1]:
+        if self._model_parser.n_features and self._model_parser.n_features != self.X1.shape[1]:
             raise ValueError('Number of columns in X1 (X2) not equal to the number of features required for "model"')
+        if self._model_parser.cat_feature_indices and self._model_parser.cat_feature_indices != self.cat_feature_indices:
+            raise ValueError(f'"cat_feature_indices" argument: {self.cat_feature_indices} not consistent with '
+                            f'value inferred from the model: {self._model_parser.cat_feature_indices}')
 
-    def _parse_model(self, model, iteration_range):
+    def _parse_model(self, model, iteration_range: Optional[Tuple[int, int]], task: Optional[str]):
         if safe_isinstance(model, 'xgboost.core.Booster'):
-            self._model_parser: IModelParser = XGBoostParser(model, 'xgboost.core.Booster', iteration_range)
+            self._model_parser: AbstractModelParser = XGBoostParser(model, 'xgboost.core.Booster', iteration_range)
         elif safe_isinstance(model, 'xgboost.sklearn.XGBClassifier'):
             # output of get_booster() is in binary format and universal among various XGBoost interfaces
-            self._model_parser: IModelParser = XGBoostParser(model.get_booster(), 'xgboost.sklearn.XGBClassifier',
+            self._model_parser: AbstractModelParser = XGBoostParser(model.get_booster(), 'xgboost.sklearn.XGBClassifier',
                                                                    iteration_range)
         elif safe_isinstance(model, 'xgboost.sklearn.XGBRegressor'):
-            self._model_parser: IModelParser = XGBoostParser(model.get_booster(), 'xgboost.sklearn.XGBRegressor',
+            self._model_parser: AbstractModelParser = XGBoostParser(model.get_booster(), 'xgboost.sklearn.XGBRegressor',
                                                                    iteration_range)
         elif safe_isinstance(model, 'xgboost.sklearn.XGBRanker'):
-            self._model_parser: IModelParser = XGBoostParser(model.get_booster(), 'xgboost.sklearn.XGBRanker',
+            self._model_parser: AbstractModelParser = XGBoostParser(model.get_booster(), 'xgboost.sklearn.XGBRanker',
                                                             iteration_range)
         # TODO: because of unresolved pbms with CatBoost().calc_leaf_indexes(), CatBoost is not supported in CinnaMon
         elif safe_isinstance(model, 'catboost.core.CatBoostClassifier'):
-            self._model_parser: IModelParser = CatBoostParser(model, 'catboost.core.CatBoostClassifier',
+            self._model_parser: AbstractModelParser = CatBoostParser(model, 'catboost.core.CatBoostClassifier',
                                                              iteration_range, task='classification')
         elif safe_isinstance(model, 'catboost.core.CatBoostRegressor'):
-            self._model_parser: IModelParser = CatBoostParser(model, 'catboost.core.CatBoostRegressor',
+            self._model_parser: AbstractModelParser = CatBoostParser(model, 'catboost.core.CatBoostRegressor',
                                                               iteration_range, task='regression')
         else:
-            self._model_parser: IModelParser = BaseModelParser(model, 'unknown')
-            ModelDriftExplainer.logger.info(f'The model of type {type(model).__name__} has no specific support in ' 
-                            'ModelDriftExplainer. However model agnostic methods only relying on model.predict calls are '
-                            'available')
+            if not task:
+                raise ValueError(f'"task" argument must not be empty when model is treated as a black box')
+            else:
+                self._model_parser: AbstractModelParser = BaseModelParser(model, 'unknown', task)
+                ModelDriftExplainer.logger.info(f'The model of type {type(model).__name__} has no specific support in ' 
+                                'ModelDriftExplainer. However model agnostic methods only relying on model.predict / model.predict_proba calls are '
+                                'available')
+
+        if task and self._model_parser.task and self._model_parser.task != task:
+            ModelDriftExplainer.logger.warning(f'task "{task}" passed as parameter not consistent with inferred task for '
+                f'model of type {type(model).__name__}. Inferred task {self._model_parser.task} is used')
         if self._model_parser.task == 'ranking':
             ModelDriftExplainer.logger.warning('A ranking model was passed to DriftExplainer. It will be treated similarly as'
                                                ' regression model but there is no warranty about the result')
