@@ -27,8 +27,9 @@ def test_boston_xgboost_ModelDriftExplainer():
                          learning_rate=0.05,
                          max_depth=6,
                          seed=RANDOM_SEED,
-                         use_label_encoder=False)
-    model.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=20, verbose=0)
+                         use_label_encoder=False,
+                         early_stopping_rounds=20)
+    model.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], verbose=0)
     drift_explainer = ModelDriftExplainer(model)
     drift_explainer.fit(X_train, X_test, y_train, y_test)
 
@@ -324,8 +325,9 @@ def test_breast_cancer_xgboost_ModelDriftExplainer():
                         learning_rate=0.05,
                         max_depth=6,
                         use_label_encoder=False,
-                        seed=RANDOM_SEED)
-    clf.fit(X=X_train, y=y_train, eval_set=[(X_valid, y_valid)], early_stopping_rounds=20, verbose=0)
+                        seed=RANDOM_SEED,
+                        early_stopping_rounds=20)
+    clf.fit(X=X_train, y=y_train, eval_set=[(X_valid, y_valid)], verbose=0)
     drift_explainer = ModelDriftExplainer(clf)
     drift_explainer.fit(X1=X_train, X2=X_valid, y1=y_train, y2=y_valid)
 
@@ -731,8 +733,9 @@ def test_iris_xgboost_XGBClassifier():
                         learning_rate=0.05,
                         max_depth=6,
                         use_label_encoder=False,
-                        seed=RANDOM_SEED)
-    clf.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=20, verbose=0)
+                        seed=RANDOM_SEED,
+                        early_stopping_rounds=20)
+    clf.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], verbose=0)
     drift_explainer = ModelDriftExplainer(clf)
     drift_explainer.fit(X1=X_train, X2=X_test, y1=y_train, y2=y_test)
 

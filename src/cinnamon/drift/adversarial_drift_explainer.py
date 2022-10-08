@@ -252,10 +252,12 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
                                 max_depth=max_depth,
                                 tree_method=tree_method,
                                 use_label_encoder=False,
-                                seed=seed)
+                                seed=seed,
+                                eval_metric=['error', 'auc', 'logloss'],
+                                early_stopping_rounds=20)
             log_frequency = 10 if verbosity else 0
-            clf.fit(X=X_train, y=y_train, eval_set=[(X_valid, y_valid)], early_stopping_rounds=20,
-                    sample_weight=sample_weights_train, verbose=log_frequency, eval_metric=['error', 'auc', 'logloss'],
+            clf.fit(X=X_train, y=y_train, eval_set=[(X_valid, y_valid)],
+                    sample_weight=sample_weights_train, verbose=log_frequency,
                     sample_weight_eval_set=[sample_weights_valid])
             if verbosity:
                 # TODO: print some logs about the trained adversarial model
