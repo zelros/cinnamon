@@ -59,3 +59,9 @@ def map_array_to_bins(a: np.array, bin_edges: np.array) -> np.array:
     bins_ids[bins_ids == len(bin_edges)] = len(bin_edges) - 1
     return bins_ids - 1
 
+
+def log_softmax(a: np.array) -> np.array:
+    # from an array of predicted probabilities in rows, compute the rowwise log softmax of predictions
+    # so that the mean of each row is equal to 0.
+    log_predictions = np.log(a)
+    return log_predictions - np.mean(log_predictions, axis=1)[:, None]

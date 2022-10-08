@@ -7,7 +7,7 @@ from ..model_parser.abstract_model_parser import AbstractModelParser
 from .adversarial_drift_explainer import AdversarialDriftExplainer
 from ..model_parser.xgboost_parser import XGBoostParser
 from ..model_parser.catboost_parser import CatBoostParser
-from ..model_parser.base_model_parser import BaseModelParser
+from ..model_parser.model_agnostic_model_parser import ModelAgnosticModelParser
 
 from .drift_utils import (compute_drift_num, plot_drift_num,
                           DriftMetricsNum, PerformanceMetricsDrift,
@@ -277,7 +277,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         else:  # ranking
             raise NotImplementedError('No metrics currently implemented for ranking model')
 
-    def get_tree_based_drift_values(self, type: str = TreeBasedDriftValueType.NODE_SIZE.value) -> np.array:
+    def get_tree_based_drift_values(self, type: str = TreeBasedDriftValueType.MEAN.value) -> np.array:
         """
         Compute drift values using the tree structures present in the model.
 
@@ -305,7 +305,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             self._tree_based_drift_values_sum_check = True
         return self._model_parser.compute_tree_based_drift_values(type)
 
-    def plot_tree_based_drift_values(self, n: int = 10, type: str = TreeBasedDriftValueType.NODE_SIZE.value) -> None:
+    def plot_tree_based_drift_values(self, n: int = 10, type: str = TreeBasedDriftValueType.MEAN.value) -> None:
         """
         Plot drift values computed using the tree structures present in the model.
 
@@ -465,7 +465,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             return []
 
     @staticmethod
-    def _get_class_names(task, model_parser: AbstractModelParser, prediction_dim) -> List[str]:
+    def _get_class_names(task, model_parser: AbstractModelParser, prediction_dim: int) -> List[str]:
         if task == 'regression':
             return []
         elif model_parser.model_type == 'catboost.core.CatBoostClassifier':
@@ -503,12 +503,14 @@ class ModelDriftExplainer(AbstractDriftExplainer):
                                                               iteration_range, task='regression')
         else:
             if not task:
-                raise ValueError(f'"task" argument must not be empty when model is treated as a black box')
+                raise ValueError(f'Model of type {type(model).__name__} has no specific support in CinnaMon ModelDriftExplainer. '
+                                '"task" argument should be provided so that model can be processed as a black box and model '
+                                'agnostic features are available.')
             else:
-                self._model_parser: AbstractModelParser = BaseModelParser(model, 'unknown', task)
-                ModelDriftExplainer.logger.info(f'The model of type {type(model).__name__} has no specific support in ' 
-                                'ModelDriftExplainer. However model agnostic methods only relying on model.predict / model.predict_proba calls are '
-                                'available')
+                self._model_parser: AbstractModelParser = ModelAgnosticModelParser(model, 'unknown', task)
+                #ModelDriftExplainer.logger.info(f'Model of type {type(model).__name__} has no specific support in ' 
+                #                'ModelDriftExplainer. However model agnostic methods only relying on model.predict / model.predict_proba calls are '
+                #                'available')
 
         if task and self._model_parser.task and self._model_parser.task != task:
             ModelDriftExplainer.logger.warning(f'task "{task}" passed as parameter not consistent with inferred task for '

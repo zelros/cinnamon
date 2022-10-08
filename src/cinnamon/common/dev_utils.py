@@ -64,3 +64,7 @@ def find_uniques(*arrays: np.array):
             uniques.add(x)
     uniques.discard(None)
     return list(uniques)
+
+def has_method(o, method_name: str) -> bool:
+    # check whether an object has a given method or not
+    return callable(getattr(o, method_name, None))

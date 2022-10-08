@@ -40,10 +40,13 @@ class AbstractModelParser:
             raise ValueError(f'Bad value for prediction_type: {prediction_type}')
     
     def predict_raw(self, X: pd.DataFrame) -> np.array:
-        return self.original_model.predict(X)
+        pass
 
     def predict_proba(self, X: pd.DataFrame) -> np.array:
-        return self.original_model.predict_proba(X)
+        pass
+
+    def predict_class(self, X: pd.DataFrame) -> np.array:
+        pass
 
     def get_prediction_dim(self, X1=None) -> int:
         if self.prediction_dim:
@@ -55,6 +58,6 @@ class AbstractModelParser:
             elif len(temp_dim) == 2 and temp_dim[1] <= 2:
                 return 1
             elif len(temp_dim) == 2:
-                temp_dim[1]
+                return temp_dim[1]
             else:
                 raise ValueError(f'Can not infer the predicted dimension of the output from the model provided')
