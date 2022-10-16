@@ -9,7 +9,7 @@ from pandas.testing import assert_frame_equal
 from .math_utils import sigmoid, softmax
 from typing import List
 from scipy.spatial.distance import jensenshannon
-from.constants import FLOAT_atol
+from.constants import DEFAULT_atol
 
 # ---------------------------------------
 #        Compute performance metrics ML
@@ -29,8 +29,8 @@ class RegressionMetrics(PerformanceMetrics):
 
     def assert_equal(self, other) -> None:
         assert isinstance(other, RegressionMetrics)
-        assert_allclose(self.mse, other.mse, atol=FLOAT_atol)
-        assert_allclose(self.explained_variance, other.explained_variance, atol=FLOAT_atol)
+        assert_allclose(self.mse, other.mse, atol=DEFAULT_atol)
+        assert_allclose(self.explained_variance, other.explained_variance, atol=DEFAULT_atol)
 
 
 @dataclass
@@ -40,14 +40,14 @@ class ClassificationMetrics(PerformanceMetrics):
 
     def assert_equal(self, other) -> None:
         assert isinstance(other, ClassificationMetrics)
-        assert_allclose(self.accuracy, other.accuracy, atol=FLOAT_atol)
+        assert_allclose(self.accuracy, other.accuracy, atol=DEFAULT_atol)
         self.__assert_equal_or_none(self.log_loss, other.log_loss)
 
     @staticmethod
     def __assert_equal_or_none(x, y):
         assert (x is not None) == (y is not None)
         if x is not None:
-            assert_allclose(x, y, atol=FLOAT_atol)
+            assert_allclose(x, y, atol=DEFAULT_atol)
 
 
 def compute_classification_metrics(y_true: np.array, y_pred: np.array, sample_weights: np.array,
@@ -257,8 +257,8 @@ class BaseStatisticalTestResult:
 
     def assert_equal(self, other):
         assert isinstance(other, BaseStatisticalTestResult)
-        assert_allclose(self.statistic, other.statistic, atol=FLOAT_atol)
-        assert_allclose(self.pvalue, other.pvalue, atol=FLOAT_atol)
+        assert_allclose(self.statistic, other.statistic, atol=DEFAULT_atol)
+        assert_allclose(self.pvalue, other.pvalue, atol=DEFAULT_atol)
 
 
 @dataclass(frozen=True)
@@ -268,7 +268,7 @@ class Chi2TestResult(BaseStatisticalTestResult):
 
     def assert_equal(self, other):
         assert isinstance(other, Chi2TestResult)
-        # atol != FLOAT_atol, bellow. Because pbm with CI in Python 3.6 (result of chi2 test differs in Python 3.6 CI env)
+        # atol != DEFAULT_atol, bellow. Because pbm with CI in Python 3.6 (result of chi2 test differs in Python 3.6 CI env)
         assert_allclose(self.statistic, other.statistic, atol=2e-3)
         assert_allclose(self.pvalue, other.pvalue, atol=4e-2)
         assert self.dof == other.dof

@@ -1,7 +1,8 @@
 from enum import Enum
 
 NUMPY_atol = 1e-8
-FLOAT_atol = 1e-12
+DEFAULT_atol = 1e-12
+DEFAULT_rtol = 1e-8
 
 
 class TreeBasedDriftValueType(Enum):

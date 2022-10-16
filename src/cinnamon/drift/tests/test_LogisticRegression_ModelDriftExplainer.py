@@ -37,7 +37,7 @@ def test_LogisticRegression_ModelDriftExplainer():
                                             wasserstein=0.6765664760436445,
                                             ks_test=BaseStatisticalTestResult(statistic=0.034015104763584, pvalue=0.9980870287496009))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='raw'),
-                                    prediction_drift_ref)
+                                    prediction_drift_ref, rtol=1e-2, atol=0.01)
 
     # prediction drift "proba"
     prediction_drift_proba_ref = [DriftMetricsNum(mean_difference=-0.0015880058846903244,
@@ -179,7 +179,7 @@ def test_iris_LogisticRegression_ModelDriftExplainer():
                                 statistic=0.16825396825396827, pvalue=0.3024954514809168)),
                             DriftMetricsNum(mean_difference=-0.8770666038514756, wasserstein=0.880126585236782, ks_test=BaseStatisticalTestResult(statistic=0.12380952380952381, pvalue=0.6769980003896401))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='raw'),
-                                    prediction_drift_ref)
+                                    prediction_drift_ref, rtol=1e-3, atol=1e-3)
 
     # prediction drift "proba"
     prediction_drift_proba_ref = [DriftMetricsNum(mean_difference=0.05808348053790602, wasserstein=0.058098961387593524, ks_test=BaseStatisticalTestResult(statistic=0.12698412698412698, pvalue=0.6467769104301898)),

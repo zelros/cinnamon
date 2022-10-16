@@ -69,7 +69,7 @@ def test_AmesHousing_LinearRegression_ModelDriftExplainer():
                                             wasserstein=5368.068091932769,
                                             ks_test=BaseStatisticalTestResult(statistic=0.046966731898238745, pvalue=0.4943709245152732))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(),
-                                    prediction_drift_ref)
+                                    prediction_drift_ref, rtol=1e-5, atol=0.1)
 
     # target drift
     assert_drift_metrics_equal(drift_explainer.get_target_drift(),
