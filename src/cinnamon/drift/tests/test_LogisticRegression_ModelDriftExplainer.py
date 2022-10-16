@@ -44,7 +44,8 @@ def test_LogisticRegression_ModelDriftExplainer():
                                                   wasserstein=0.007597002373353593,
                                                   ks_test=BaseStatisticalTestResult(statistic=0.034015104763584, pvalue=0.9980870287496009))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='proba'),
-                                    prediction_drift_proba_ref)
+                                    prediction_drift_proba_ref,
+                                    rtol=1e-3, atol=0.01)
 
     # prediction drift "class"
     prediction_drift_class_ref = [DriftMetricsCat(wasserstein=0.010109024655440946,
@@ -55,7 +56,7 @@ def test_LogisticRegression_ModelDriftExplainer():
                                                                            contingency_table=pd.DataFrame([[146.0, 252.0], [61.0, 110.0]],
                                                                                                           index=['X1', 'X2'], columns=[0, 1])))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='class'),
-                                    prediction_drift_class_ref)
+                                    prediction_drift_class_ref, rtol=1e-5, atol=1e5)
 
     # model agnostic drift importances "mean"
     assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
@@ -179,7 +180,8 @@ def test_iris_LogisticRegression_ModelDriftExplainer():
                                 statistic=0.16825396825396827, pvalue=0.3024954514809168)),
                             DriftMetricsNum(mean_difference=-0.8770666038514756, wasserstein=0.880126585236782, ks_test=BaseStatisticalTestResult(statistic=0.12380952380952381, pvalue=0.6769980003896401))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='raw'),
-                                    prediction_drift_ref, rtol=1e-3, atol=1e-3)
+                                    prediction_drift_ref,
+                                    rtol=1e-3, atol=1e-3)
 
     # prediction drift "proba"
     prediction_drift_proba_ref = [DriftMetricsNum(mean_difference=0.05808348053790602, wasserstein=0.058098961387593524, ks_test=BaseStatisticalTestResult(statistic=0.12698412698412698, pvalue=0.6467769104301898)),
@@ -187,7 +189,8 @@ def test_iris_LogisticRegression_ModelDriftExplainer():
                                       statistic=0.07301587301587302, pvalue=0.9917692279981893)),
                                   DriftMetricsNum(mean_difference=-0.07857045180628125, wasserstein=0.07857045186835532, ks_test=BaseStatisticalTestResult(statistic=0.1365079365079365, pvalue=0.5571746191565531))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='proba'),
-                                    prediction_drift_proba_ref)
+                                    prediction_drift_proba_ref,
+                                    rtol=1e-3, atol=1e-3)
 
     # prediction drift "class"
     prediction_drift_class_ref = [DriftMetricsCat(wasserstein=0.12380952380952381,

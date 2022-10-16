@@ -9,7 +9,7 @@ from pandas.testing import assert_frame_equal
 from .math_utils import sigmoid, softmax
 from typing import List
 from scipy.spatial.distance import jensenshannon
-from.constants import DEFAULT_atol
+from.constants import DEFAULT_atol, DEFAULT_rtol
 
 # ---------------------------------------
 #        Compute performance metrics ML
@@ -27,10 +27,10 @@ class RegressionMetrics(PerformanceMetrics):
     mse: float
     explained_variance: float
 
-    def assert_equal(self, other) -> None:
+    def assert_equal(self, other, rtol: float = DEFAULT_rtol, atol: float = DEFAULT_atol) -> None:
         assert isinstance(other, RegressionMetrics)
-        assert_allclose(self.mse, other.mse, atol=DEFAULT_atol)
-        assert_allclose(self.explained_variance, other.explained_variance, atol=DEFAULT_atol)
+        assert_allclose(self.mse, other.mse, rtol=rtol, atol=atol)
+        assert_allclose(self.explained_variance, other.explained_variance, rtol=rtol, atol=atol)
 
 
 @dataclass
@@ -38,16 +38,16 @@ class ClassificationMetrics(PerformanceMetrics):
     accuracy: float
     log_loss: float = None
 
-    def assert_equal(self, other) -> None:
+    def assert_equal(self, other, rtol: float = DEFAULT_rtol, atol: float = DEFAULT_atol) -> None:
         assert isinstance(other, ClassificationMetrics)
-        assert_allclose(self.accuracy, other.accuracy, atol=DEFAULT_atol)
-        self.__assert_equal_or_none(self.log_loss, other.log_loss)
+        assert_allclose(self.accuracy, other.accuracy, rtol=rtol, atol=atol)
+        self.__assert_equal_or_none(self.log_loss, other.log_loss, rtol=rtol, atol=atol)
 
     @staticmethod
-    def __assert_equal_or_none(x, y):
+    def __assert_equal_or_none(x, y, rtol, atol):
         assert (x is not None) == (y is not None)
         if x is not None:
-            assert_allclose(x, y, atol=DEFAULT_atol)
+            assert_allclose(x, y, rtol=rtol, atol=atol)
 
 
 def compute_classification_metrics(y_true: np.array, y_pred: np.array, sample_weights: np.array,

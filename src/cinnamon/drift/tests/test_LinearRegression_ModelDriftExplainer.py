@@ -73,14 +73,16 @@ def test_AmesHousing_LinearRegression_ModelDriftExplainer():
 
     # target drift
     assert_drift_metrics_equal(drift_explainer.get_target_drift(),
-                               DriftMetricsNum(mean_difference=-5589.04044357469, wasserstein=6036.554468362687, ks_test=BaseStatisticalTestResult(statistic=0.04044357469015003, pvalue=0.6829578717438207)))
+                               DriftMetricsNum(mean_difference=-5589.04044357469, wasserstein=6036.554468362687, ks_test=BaseStatisticalTestResult(statistic=0.04044357469015003, pvalue=0.6829578717438207)),
+                               rtol=1e-5, atol=0.1)
 
     # performance_metrics_drift
     assert_performance_metrics_drift_equal(drift_explainer.get_performance_metrics_drift(),
                                            PerformanceMetricsDrift(RegressionMetrics(mse=1297832435.0235813,
                                                                                      explained_variance=0.7990458696049108),
                                                                    RegressionMetrics(mse=1539552291.4610596,
-                                                                                     explained_variance=0.7405622136312852)))
+                                                                                     explained_variance=0.7405622136312852)),
+                                                                                     rtol=1e-5, atol=0.1)
 
     # model agnostic drift importances "mean"
     assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),

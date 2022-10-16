@@ -140,7 +140,9 @@ class PerformanceMetricsDrift:
 
 
 def assert_performance_metrics_drift_equal(performance_metrics_drift1: PerformanceMetricsDrift,
-                                           performance_metrics_drift2: PerformanceMetricsDrift):
+                                           performance_metrics_drift2: PerformanceMetricsDrift,
+                                           rtol: float = DEFAULT_rtol,
+                                           atol: float = DEFAULT_atol):
     performance_metrics_drift1.dataset1.assert_equal(
         performance_metrics_drift2.dataset1)
     performance_metrics_drift1.dataset2.assert_equal(
