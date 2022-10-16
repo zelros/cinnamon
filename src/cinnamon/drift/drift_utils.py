@@ -144,9 +144,9 @@ def assert_performance_metrics_drift_equal(performance_metrics_drift1: Performan
                                            rtol: float = DEFAULT_rtol,
                                            atol: float = DEFAULT_atol):
     performance_metrics_drift1.dataset1.assert_equal(
-        performance_metrics_drift2.dataset1)
+        performance_metrics_drift2.dataset1, rtol=rtol, atol=atol)
     performance_metrics_drift1.dataset2.assert_equal(
-        performance_metrics_drift2.dataset2)
+        performance_metrics_drift2.dataset2, rtol=rtol, atol=atol)
 
 
 def compute_model_agnostic_drift_value_num(a1: np.array, a2: np.array, type: str, sample_weights1: np.array,

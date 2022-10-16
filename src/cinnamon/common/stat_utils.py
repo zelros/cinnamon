@@ -18,7 +18,7 @@ from.constants import DEFAULT_atol, DEFAULT_rtol
 
 @dataclass
 class PerformanceMetrics:
-    def assert_equal(self, other) -> None:
+    def assert_equal(self, other, rtol: float, atol: float) -> None:
         pass
 
 
@@ -44,7 +44,7 @@ class ClassificationMetrics(PerformanceMetrics):
         self.__assert_equal_or_none(self.log_loss, other.log_loss, rtol=rtol, atol=atol)
 
     @staticmethod
-    def __assert_equal_or_none(x, y, rtol, atol):
+    def __assert_equal_or_none(x, y, rtol: float = DEFAULT_rtol, atol: float = DEFAULT_atol):
         assert (x is not None) == (y is not None)
         if x is not None:
             assert_allclose(x, y, rtol=rtol, atol=atol)
