@@ -90,7 +90,7 @@ def test_LogisticRegression_ModelDriftExplainer():
                               [0.43615057],
                               [0.39054499],
                               [-0.09303799]]),
-                    atol=NUMPY_atol)
+                    atol=1e-2)
 
     # model agnostic drift values "wasserstein"
     assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
@@ -124,7 +124,7 @@ def test_LogisticRegression_ModelDriftExplainer():
                               [0.48772089],
                               [0.47082898],
                               [0.35988305]]),
-                    atol=NUMPY_atol)
+                    atol=1e-2)
 
     assert drift_explainer.task == 'classification'
     assert drift_explainer.class_names == ['0', '1']
@@ -219,7 +219,7 @@ def test_iris_LogisticRegression_ModelDriftExplainer():
                               [-0.53260398, -0.04423636,  0.57684034],
                               [0.69789646,  0.05740799, -0.75530445],
                               [0.75401974,  0.07368188, -0.82770162]]),
-                    atol=NUMPY_atol)
+                    atol=1e-3)
 
     # model agnostic drift importances "wasserstein"
     assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
@@ -227,7 +227,7 @@ def test_iris_LogisticRegression_ModelDriftExplainer():
                               [0.54119694, 0.04603877, 0.58388156],
                               [0.69789646, 0.05740799, 0.75530445],
                               [0.75401974, 0.07368188, 0.82770162]]),
-                    atol=NUMPY_atol)
+                    atol=1e-3)
 
     assert drift_explainer.cat_feature_indices == []
     assert drift_explainer.class_names == ['0', '1', '2']
