@@ -192,6 +192,12 @@ class CatBoostParser(AbstractTreeEnsembleParser):
             return self.original_model.predict_proba(pool, ntree_start=self.iteration_range[0],
                                                      ntree_end=self.iteration_range[1])
 
+    def predict_class(self, X: pd.DataFrame):
+        pool = catboost.Pool(X, cat_features=self.cat_feature_indices)
+        return self.original_model.predict(pool, prediction_type='Class',
+                                           ntree_start=self.iteration_range[0],
+                                           ntree_end=self.iteration_range[1]).squeeze()
+
     def predict_leaf_with_model_parser(self, X):
         # TODO: common - should be put in abstract class (but pbm there is a
         # a small difference between XGBoostParser and CatboostParser

@@ -99,6 +99,40 @@ def test_boston_catboost_ModelDriftExplainer():
                               [-0.43489742]]),
                     atol=NUMPY_atol)
 
+    # model agnostic drift importances "mean"
+    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+                    np.array([[-0.03545244],
+       [-0.06795944],
+       [-0.33765027],
+       [ 0.12731554],
+       [ 0.19200817],
+       [-0.34296801],
+       [ 0.13007924],
+       [-0.0183112 ],
+       [ 0.13353618],
+       [ 0.41475506],
+       [-0.1547771 ],
+       [ 0.27337523],
+       [-0.73444305]]),
+                    atol=NUMPY_atol)
+
+    # model agnostic drift importances "mean"
+    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+                    np.array([[0.13655719],
+       [0.09493406],
+       [0.57431509],
+       [0.13018875],
+       [0.19826565],
+       [0.61137351],
+       [0.14221204],
+       [0.06029066],
+       [0.13451973],
+       [0.41556429],
+       [0.28366992],
+       [0.27438688],
+       [0.73482857]]),
+                    atol=NUMPY_atol)
+
     # feature_drift_LSTAT
     assert_drift_metrics_equal(drift_explainer.get_feature_drift('LSTAT'),
                                DriftMetricsNum(mean_difference=0.7378638864109419, wasserstein=0.8023078352661315, ks_test=BaseStatisticalTestResult(statistic=0.08887154326494201, pvalue=0.3452770147763923)))
@@ -224,7 +258,7 @@ def test_boston_catboost_ModelDriftExplainer():
                                              'PTRATIO',
                                              'B',
                                              'LSTAT']
-    assert drift_explainer.iteration_range == (0, 123)
+    assert drift_explainer._model_parser.iteration_range == (0, 123)
     assert drift_explainer.n_features == 13
     assert drift_explainer.task == 'regression'
 
@@ -254,6 +288,17 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
     prediction_drift_proba_ref = [DriftMetricsNum(mean_difference=0.016349784083660057, wasserstein=0.0339516727427027, ks_test=BaseStatisticalTestResult(statistic=0.0658702871080549, pvalue=0.6459307033330981))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='proba'),
                                     prediction_drift_proba_ref)
+
+    # prediction drift "class"
+    prediction_drift_class_ref = [DriftMetricsCat(wasserstein=0.026830056716330153,
+                                               jensen_shannon=0.019782755907731316,
+                                               chi2_test=Chi2TestResult(statistic=0.2651192277607507,
+                                                                        pvalue=0.6066247889305479,
+                                                                        dof=1,
+                                                                        contingency_table=pd.DataFrame([[148.0, 250.0], [59.0, 112.0]],
+                                                                                                       index=['X1', 'X2'], columns=[0, 1])))]
+    assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='class'),
+                                    prediction_drift_class_ref)
 
     # target drift
     assert_drift_metrics_equal(drift_explainer.get_target_drift(),
@@ -373,6 +418,74 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
                               [-0.00963751]]),
                     atol=NUMPY_atol)
 
+    # model agnostic drift values "mean"
+    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+                    np.array([[-0.28899426],
+       [-0.21982124],
+       [-0.21498822],
+       [-0.29718787],
+       [ 0.23037665],
+       [ 0.40518184],
+       [ 0.43285781],
+       [ 0.35024222],
+       [ 0.21639351],
+       [ 0.05594126],
+       [ 0.07509825],
+       [ 0.11848398],
+       [-0.1423436 ],
+       [-0.2361577 ],
+       [-0.10883638],
+       [ 0.14073412],
+       [-0.10505069],
+       [ 0.02518116],
+       [-0.01559976],
+       [ 0.0557033 ],
+       [-0.10517543],
+       [-0.10766155],
+       [-0.22127001],
+       [-0.08576331],
+       [ 0.34132999],
+       [ 0.12796041],
+       [ 0.38688847],
+       [ 0.11978509],
+       [ 0.05488774],
+       [ 0.02380675]]),
+                    atol=NUMPY_atol)
+
+    # model agnostic drift values "wasserstein"
+    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+                    np.array([[0.32594406],
+       [0.22173909],
+       [0.29068552],
+       [0.3330133 ],
+       [0.23475845],
+       [0.4054568 ],
+       [0.43286236],
+       [0.35031408],
+       [0.21887108],
+       [0.13188465],
+       [0.10019498],
+       [0.12614226],
+       [0.14412546],
+       [0.23616085],
+       [0.13418313],
+       [0.14679793],
+       [0.10511884],
+       [0.06233142],
+       [0.07567195],
+       [0.05680785],
+       [0.13884337],
+       [0.11972261],
+       [0.28728042],
+       [0.16609645],
+       [0.34134204],
+       [0.13084842],
+       [0.38716728],
+       [0.22285182],
+       [0.07033316],
+       [0.21039473]]),
+                    atol=NUMPY_atol)
+    
     # feature_drift mean perimeter
     assert_drift_metrics_equal(drift_explainer.get_feature_drift('mean perimeter'),
                                DriftMetricsNum(mean_difference=-0.5394598724617197,
@@ -548,7 +661,7 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
                                              'worst concave points',
                                              'worst symmetry',
                                              'worst fractal dimension']
-    assert drift_explainer.iteration_range == (0, 105)
+    assert drift_explainer._model_parser.iteration_range == (0, 105)
     assert drift_explainer.n_features == 30
     assert drift_explainer.task == 'classification'
 
@@ -582,6 +695,17 @@ def test_iris_catboost_ModelDriftExplainer():
                                   DriftMetricsNum(mean_difference=-0.13377093616306102, wasserstein=0.13459925728761946, ks_test=BaseStatisticalTestResult(statistic=0.18095238095238095, pvalue=0.22712915347334828))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='proba'),
                                     prediction_drift_proba_ref)
+
+    # prediction drift "class"
+    prediction_drift_class_ref = [DriftMetricsCat(wasserstein=0.17142857142857143,
+                                               jensen_shannon=0.13595747976960396,
+                                               chi2_test=Chi2TestResult(statistic=4.332417582417582,
+                                                                        pvalue=0.11461130968629471,
+                                                                        dof=2,
+                                                                        contingency_table=pd.DataFrame([[33.0, 33.0, 39.0], [17.0, 19.0, 9.0]],
+                                                                                                       index=['X1', 'X2'], columns=[0, 1, 2])))]
+    assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='class'),
+                                    prediction_drift_class_ref)
 
     # target drift
     assert_drift_metrics_equal(drift_explainer.get_target_drift(),
@@ -620,6 +744,22 @@ def test_iris_catboost_ModelDriftExplainer():
                               [-0.09248865, -0.05182248, -0.0942603 ],
                               [-0.06083239, -0.14343543, -0.21452551],
                               [ 0.03280696,  0.07820104, -0.60642925]]),
+                    atol=NUMPY_atol)
+
+    # model agnostic drift importances "mean"
+    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+                    np.array([[ 0.27410928, -0.26891114, -0.00519814],
+       [-0.21751277,  0.06952641,  0.14798636],
+       [ 0.27960147, -0.12182532, -0.15777616],
+       [ 0.27921223, -0.00311214, -0.27610009]]),
+                    atol=NUMPY_atol)
+
+    # model agnostic drift importances "wasserstein"
+    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+                    np.array([[0.28117677, 0.27019063, 0.04089844],
+       [0.21751277, 0.0696502 , 0.14798636],
+       [0.27960147, 0.12182532, 0.15777616],
+       [0.27921223, 0.01863353, 0.27610009]]),
                     atol=NUMPY_atol)
 
     # feature_drift - argument as a string
@@ -710,6 +850,6 @@ def test_iris_catboost_ModelDriftExplainer():
                                              'sepal width (cm)',
                                              'petal length (cm)',
                                              'petal width (cm)']
-    assert drift_explainer.iteration_range == (0, 82)
+    assert drift_explainer._model_parser.iteration_range == (0, 82)
     assert drift_explainer.n_features == 4
     assert drift_explainer.task == 'classification'

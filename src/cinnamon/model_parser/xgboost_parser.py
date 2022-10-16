@@ -241,6 +241,13 @@ class XGBoostParser(AbstractTreeEnsembleParser):
     def predict_proba(self, X: pd.DataFrame):
         return self.original_model.predict(xgboost.DMatrix(X), iteration_range=self.iteration_range)
 
+    def predict_class(self, X: pd.DataFrame):
+        predicted_proba = self.predict_proba(X)
+        if predicted_proba.ndim == 1:
+            return np.round(predicted_proba).astype(int)
+        else:
+            return np.argmax(predicted_proba, axis=1)
+
     def predict_leaf_with_model_parser(self, X):
         # TODO: common - should be put in abstract class (but pbm there is a
         # a small difference between XGBoostParser and CatboostParser

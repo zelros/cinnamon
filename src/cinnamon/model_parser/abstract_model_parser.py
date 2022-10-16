@@ -36,6 +36,8 @@ class AbstractModelParser:
             return self.predict_raw(X)
         elif prediction_type == 'proba':
             return self.predict_proba(X)
+        elif prediction_type == 'class':
+            return self.predict_class(X)
         else:
             raise ValueError(f'Bad value for prediction_type: {prediction_type}')
     
@@ -49,15 +51,17 @@ class AbstractModelParser:
         pass
 
     def get_prediction_dim(self, X1=None) -> int:
-        if self.prediction_dim:
-            return self.prediction_dim
-        else:
-            temp_dim = np.array(self.get_predictions(X1, prediction_type='raw')).squeeze().shape
-            if len(temp_dim) == 1:
-                return 1
-            elif len(temp_dim) == 2 and temp_dim[1] <= 2:
-                return 1
-            elif len(temp_dim) == 2:
-                return temp_dim[1]
-            else:
-                raise ValueError(f'Can not infer the predicted dimension of the output from the model provided')
+        if not self.prediction_dim:
+            if self.task in ['regression', 'ranking']:
+                self.prediction_dim = 1
+            else:        
+                pred_shape = self.predict_proba(X1).shape
+                if len(pred_shape) == 1:
+                    self.prediction_dim = 1
+                elif len(pred_shape) == 2 and pred_shape[1] <= 2:
+                    self.prediction_dim = 1
+                elif len(pred_shape) == 2:
+                    self.prediction_dim = pred_shape[1]
+                else:
+                    raise ValueError(f'Can not infer the predicted dimension of the output from the model provided')
+        return self.prediction_dim

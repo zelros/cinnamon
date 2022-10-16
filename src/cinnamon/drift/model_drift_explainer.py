@@ -9,7 +9,8 @@ from ..model_parser.xgboost_parser import XGBoostParser
 from ..model_parser.catboost_parser import CatBoostParser
 from ..model_parser.model_agnostic_model_parser import ModelAgnosticModelParser
 
-from .drift_utils import (compute_drift_num, plot_drift_num,
+from .drift_utils import (compute_drift_cat, compute_drift_num, plot_drift_cat, plot_drift_num,
+                          plot_drift_cat,
                           DriftMetricsNum, PerformanceMetricsDrift,
                           compute_model_agnostic_drift_value_num,
                           compute_model_agnostic_drift_value_cat)
@@ -95,7 +96,6 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         super().__init__()
         # Parse model
         self._parse_model(model, iteration_range, task)
-        self.iteration_range = self._model_parser.iteration_range
         self.task = self._model_parser.task
 
         # init other
@@ -163,6 +163,8 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         if self.task == "classification":
             self.pred_proba1 = self._model_parser.get_predictions(self.X1, prediction_type="proba")
             self.pred_proba2 = self._model_parser.get_predictions(self.X2, prediction_type="proba")
+            self.pred_class1 = self._model_parser.get_predictions(self.X1, prediction_type="class")
+            self.pred_class2 = self._model_parser.get_predictions(self.X2, prediction_type="class")
 
         # fit model parser on data
         self._model_parser.fit(self.X1, self.X2, self.sample_weights1, self.sample_weights2)
@@ -184,6 +186,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             - "raw" : logit predictions (binary classification), log-softmax predictions
             (multiclass classification), regular predictions (regression)
             - "proba" : predicted probabilities (only for classification model)
+            - "class": predicted classes (only for classification model)
 
         Returns
         -------
@@ -191,22 +194,25 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             Drift measures for each predicted dimension.
         """
         pred1, pred2 = self._get_predictions(prediction_type)
-        return self._compute_prediction_drift(pred1, pred2, self.task, self._prediction_dim,
+        return self._compute_prediction_drift(pred1, pred2, prediction_type, self.task, self._prediction_dim,
                                                 self.sample_weights1, self.sample_weights2) 
 
     @staticmethod
-    def _compute_prediction_drift(predictions1, predictions2, task, prediction_dim,
+    def _compute_prediction_drift(predictions1, predictions2, prediction_type, task, prediction_dim,
                                   sample_weights1=None, sample_weights2=None) -> List[DriftMetricsNum]:
         prediction_drift = []
         if task == 'classification':
-            if prediction_dim == 1:  # binary classif
-                prediction_drift.append(compute_drift_num(predictions1, predictions2, sample_weights1, sample_weights2))
-            else:  # multiclass classif
-                for i in range(predictions1.shape[1]):
-                    drift = compute_drift_num(predictions1[:, i], predictions2[:, i],
-                                              sample_weights1, sample_weights2)
-                    prediction_drift.append(drift)
-        elif task in ['regression', 'ranking']:
+            if prediction_type == 'class':
+                prediction_drift.append(compute_drift_cat(predictions1, predictions2, sample_weights1, sample_weights2))
+            else: # prediction_type in ['raw', 'proba']
+                if prediction_dim == 1:  # binary classif
+                    prediction_drift.append(compute_drift_num(predictions1, predictions2, sample_weights1, sample_weights2))
+                else:  # multiclass classif
+                    for i in range(predictions1.shape[1]):
+                        drift = compute_drift_num(predictions1[:, i], predictions2[:, i],
+                                                sample_weights1, sample_weights2)
+                        prediction_drift.append(drift)
+        else: # task in ['regression', 'ranking']:
             prediction_drift.append(compute_drift_num(predictions1, predictions2, sample_weights1, sample_weights2))
         return prediction_drift
 
@@ -246,11 +252,19 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         """
         pred1, pred2 = self._get_predictions(prediction_type)
 
-        if self.task == 'classification' and self._prediction_dim > 1:  # multiclass classif
-            for i in range(self._prediction_dim):
-                plot_drift_num(pred1[:, i], pred2[:, i], self.sample_weights1, self.sample_weights2,
-                               title=f'{self.class_names[i]}', figsize=figsize, bins=bins, legend_labels=legend_labels)
-        else:  # binary classif or regression
+        if self.task == 'classification':
+            if prediction_type == 'class':
+                plot_drift_cat(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions',
+                               max_n_cat=20, figsize=figsize, legend_labels=legend_labels)
+            else: # prediction_type in ['raw', 'proba']
+                if self._prediction_dim == 1: # binary classif
+                    plot_drift_num(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions',
+                           figsize=figsize, bins=bins, legend_labels=legend_labels)
+                else: # multiclass classif
+                    for i in range(self._prediction_dim):
+                        plot_drift_num(pred1[:, i], pred2[:, i], self.sample_weights1, self.sample_weights2,
+                                    title=f'{self.class_names[i]}', figsize=figsize, bins=bins, legend_labels=legend_labels)
+        else:  # regression or ranking
             plot_drift_num(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions',
                            figsize=figsize, bins=bins, legend_labels=legend_labels)
 
@@ -339,12 +353,14 @@ class ModelDriftExplainer(AbstractDriftExplainer):
     def _get_predictions(self, prediction_type: str) -> Tuple[np.array, np.array]:
         if self.predictions1 is None:
             raise ValueError('You must call the fit method before ploting drift')
-        if prediction_type not in ['raw', 'proba']:
+        if prediction_type not in ['raw', 'proba', 'class']:
             raise ValueError(f'Bad value for prediction_type: {prediction_type}')
         if prediction_type == 'raw':
             pred1, pred2 = self.predictions1, self.predictions2
-        else:
+        elif prediction_type == 'proba':
             pred1, pred2 = self.pred_proba1, self.pred_proba2
+        else:
+            pred1, pred2 = self.pred_class1, self.pred_class2
         return pred1, pred2
 
     def get_model_agnostic_drift_values(self, type: str = ModelAgnosticDriftValueType.MEAN.value, prediction_type: str = "raw",
