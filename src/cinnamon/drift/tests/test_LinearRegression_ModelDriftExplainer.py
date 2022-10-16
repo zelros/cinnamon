@@ -82,7 +82,7 @@ def test_AmesHousing_LinearRegression_ModelDriftExplainer():
                                                                                      explained_variance=0.7990458696049108),
                                                                    RegressionMetrics(mse=1539552291.4610596,
                                                                                      explained_variance=0.7405622136312852)),
-                                                                                     rtol=1e-5, atol=1e4)
+                                            rtol=1e-5, atol=1e4)
 
     # model agnostic drift importances "mean"
     assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),

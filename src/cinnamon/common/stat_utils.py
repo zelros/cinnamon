@@ -18,7 +18,7 @@ from.constants import DEFAULT_atol, DEFAULT_rtol
 
 @dataclass
 class PerformanceMetrics:
-    def assert_equal(self, other, rtol: float, atol: float) -> None:
+    def assert_equal(self, other, rtol: float = DEFAULT_rtol, atol: float = DEFAULT_atol) -> None:
         pass
 
 
