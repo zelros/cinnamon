@@ -494,7 +494,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         if self._model_parser.n_features and self._model_parser.n_features != self.X1.shape[1]:
             raise ValueError('Number of columns in X1 (X2) not equal to the number of features required for "model"')
         if self._model_parser.cat_feature_indices and self._model_parser.cat_feature_indices != self.cat_feature_indices:
-            raise ValueError(f'"cat_feature_indices" argument: {self.cat_feature_indices} not consistent with '
+            ModelDriftExplainer.logger.warning(f'"cat_feature_indices" argument: {self.cat_feature_indices} not consistent with ' +
                             f'value inferred from the model: {self._model_parser.cat_feature_indices}')
 
     def _parse_model(self, model, iteration_range: Optional[Tuple[int, int]], task: Optional[str]):

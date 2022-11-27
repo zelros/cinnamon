@@ -54,7 +54,7 @@ def test_LogisticRegression_ModelDriftExplainer():
                                                                            pvalue=0.8927870041515902,
                                                                            dof=1,
                                                                            contingency_table=pd.DataFrame([[146.0, 252.0], [61.0, 110.0]],
-                                                                                                          index=['X1', 'X2'], columns=[0, 1])))]
+                                                                                                          index=['X1', 'X2'], columns=['0', '1'])))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='class'),
                                     prediction_drift_class_ref, rtol=1e-5, atol=1e5)
 
@@ -199,7 +199,7 @@ def test_iris_LogisticRegression_ModelDriftExplainer():
                                                                            pvalue=0.3476211622295921,
                                                                            dof=2,
                                                                            contingency_table=pd.DataFrame([[33.0, 31.0, 41.0], [17.0, 16.0, 12.0]],
-                                                                                                          index=['X1', 'X2'], columns=[0, 1, 2])))]
+                                                                                                          index=['X1', 'X2'], columns=['0', '1', '2'])))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='class'),
                                     prediction_drift_class_ref)
 
@@ -211,7 +211,7 @@ def test_iris_LogisticRegression_ModelDriftExplainer():
                                                                         pvalue=0.5134171190325922,
                                                                         dof=2,
                                                                         contingency_table=pd.DataFrame([[33.0, 34.0, 38.0], [17.0, 16.0, 12.0]],
-                                                                                                       index=['X1', 'X2'], columns=[0, 1, 2]))))
+                                                                                                       index=['X1', 'X2'], columns=['0', '1', '2']))))
 
     # model agnostic drift importances "mean"
     assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),

@@ -54,7 +54,7 @@ def test_breast_cancer_OutputDriftDetector():
                                                                 dof=1,
                                                                 contingency_table=pd.DataFrame(
                                                                     [[148.0, 250.0], [64.0, 107.0]],
-                                                                    index=['X1', 'X2'], columns=[0, 1])))
+                                                                    index=['X1', 'X2'], columns=['0', '1'])))
     assert_drift_metrics_equal(output_drift_detector.get_target_drift(),
                                target_drift_ref)
 
@@ -79,7 +79,7 @@ def test_breast_cancer_OutputDriftDetector():
                                                                       dof=1,
                                                                       contingency_table=pd.DataFrame(
                                                                           [[148.0, 250.0], [61.0, 110.0]],
-                                                                          index=['X1', 'X2'], columns=[0, 1])))]
+                                                                          index=['X1', 'X2'], columns=['0', '1'])))]
     assert_drift_metrics_list_equal(output_drift_detector2.get_prediction_drift(),
                                     prediction_drift_ref2)
 
@@ -165,7 +165,7 @@ def test_iris_OutputDriftDetector():
                                                                 dof=2,
                                                                 contingency_table=pd.DataFrame(
                                                                     [[33.0, 34.0, 38.0], [17.0, 16.0, 12.0]],
-                                                                    index=['X1', 'X2'], columns=[0, 1, 2])))
+                                                                    index=['X1', 'X2'], columns=['0', '1', '2'])))
     assert_drift_metrics_equal(output_drift_detector.get_target_drift(),
                                target_drift_ref)
 
@@ -190,7 +190,7 @@ def test_iris_OutputDriftDetector():
                                                                       dof=2,
                                                                       contingency_table=pd.DataFrame(
                                                                           [[33.0, 34.0, 38.0], [17.0, 19.0, 9.0]],
-                                                                          index=['X1', 'X2'], columns=[0, 1, 2])))]
+                                                                          index=['X1', 'X2'], columns=['0', '1', '2'])))]
     assert_drift_metrics_list_equal(output_drift_detector2.get_prediction_drift(),
                                     prediction_drift_ref2)
 

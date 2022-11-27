@@ -213,12 +213,12 @@ def compute_model_agnostic_drift_value_cat_one_way(a1: np.array, a2: np.array, t
     thresholded_ratio_dict = {
         k: thresholded_ratio[i] for i, k in enumerate(distributions.keys())}
     if category_map:
-        a2_mapped = np.array(list(map(lambda x: category_map[x], a2)))
+        a2_mapped = np.array(list(map(lambda x: category_map[x], a2.astype(str))))
         correction_weights = np.array(
             list(map(lambda x: thresholded_ratio_dict[x], a2_mapped)))
     else:
         correction_weights = np.array(
-            list(map(lambda x: thresholded_ratio_dict[x], a2)))
+            list(map(lambda x: thresholded_ratio_dict[x], a2.astype(str))))
 
     return compute_model_agnostic_drift_value_from_weights(predictions2, type, sample_weights2, correction_weights)
 

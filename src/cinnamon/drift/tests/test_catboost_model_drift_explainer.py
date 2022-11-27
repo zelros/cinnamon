@@ -296,7 +296,7 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
                                                                         pvalue=0.6066247889305479,
                                                                         dof=1,
                                                                         contingency_table=pd.DataFrame([[148.0, 250.0], [59.0, 112.0]],
-                                                                                                       index=['X1', 'X2'], columns=[0, 1])))]
+                                                                                                       index=['X1', 'X2'], columns=['0', '1'])))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='class'),
                                     prediction_drift_class_ref)
 
@@ -308,7 +308,7 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
                                                                         pvalue=1.0,
                                                                         dof=1,
                                                                         contingency_table=pd.DataFrame([[148.0, 250.0], [64.0, 107.0]],
-                                                                                                       index=['X1', 'X2'], columns=[0, 1]))))
+                                                                                                       index=['X1', 'X2'], columns=['0', '1']))))
 
     # performance_metrics_drift
     assert_performance_metrics_drift_equal(drift_explainer.get_performance_metrics_drift(),
@@ -703,7 +703,7 @@ def test_iris_catboost_ModelDriftExplainer():
                                                                         pvalue=0.11461130968629471,
                                                                         dof=2,
                                                                         contingency_table=pd.DataFrame([[33.0, 33.0, 39.0], [17.0, 19.0, 9.0]],
-                                                                                                       index=['X1', 'X2'], columns=[0, 1, 2])))]
+                                                                                                       index=['X1', 'X2'], columns=['0', '1', '2'])))]
     assert_drift_metrics_list_equal(drift_explainer.get_prediction_drift(prediction_type='class'),
                                     prediction_drift_class_ref)
 
@@ -715,7 +715,7 @@ def test_iris_catboost_ModelDriftExplainer():
                                                                         pvalue=0.5134171190325922,
                                                                         dof=2,
                                                                         contingency_table=pd.DataFrame([[33.0, 34.0, 38.0], [17.0, 16.0, 12.0]],
-                                                                                                       index=['X1', 'X2'], columns=[0, 1, 2]))))
+                                                                                                       index=['X1', 'X2'], columns=['0', '1', '2']))))
 
     # performance_metrics_drift
     assert_performance_metrics_drift_equal(drift_explainer.get_performance_metrics_drift(),

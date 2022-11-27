@@ -102,6 +102,8 @@ def compute_regression_metrics(y_true: np.array, y_pred: np.array, sample_weight
 
 def compute_distributions_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None,
                              max_n_cat: int = None, return_category_map: bool = False):
+    a1 = a1.astype(str)
+    a2 = a2.astype(str)
     if sample_weights1 is None:
         sample_weights1 = np.ones_like(a1)
     if sample_weights2 is None:

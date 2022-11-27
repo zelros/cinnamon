@@ -68,7 +68,7 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
         if iteration_range is None:
             if best_iteration is not None:
                 iteration_range = (0, best_iteration)
-                AbstractTreeEnsembleParser.logger.warning('By default, the best iteration given by early stopping is used '
+                AbstractTreeEnsembleParser.logger.debug('By default, the best iteration given by early stopping is used '
                                                           'to compute "iteration_range". This behavior is consistent with '
                                                           'model.predict XGBoost default behavior.')
             else:
