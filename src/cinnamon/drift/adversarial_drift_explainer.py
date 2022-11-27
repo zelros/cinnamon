@@ -103,7 +103,7 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
         Fit the adversarial drift explainer to dataset 1 and dataset 2.
         Only X1, X2, sample_weights1 and sample_weights2 are used to build the
         adversarial drift explainer. y1 and y2 are only only used if call to
-        get_target_drift or plot_target_drift methods is made.
+        get_target_drift method is made.
 
         Parameters
         ----------
@@ -168,27 +168,6 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
         model_importances = [model.feature_importances_ for model in self.cv_adversarial_models]
         mean_importances = np.mean(model_importances, axis=0).reshape(-1, 1)
         return mean_importances
-
-    def plot_adversarial_drift_values(self, n: int = 10):
-        """
-        Plot drift values computed using the adversarial method. Here the drift values
-        correspond to the means of the feature importance taken over the n_splits
-        cross-validated adversarial classifiers.
-
-        See the documentation in README for explanations about how it is computed,
-        especially the slide presentation.
-
-        Parameters
-        ----------
-        n : interger, optional (default=10)
-            Top n features to represent in the plot.
-
-        Returns
-        -------
-        None
-        """
-        drift_values = self.get_adversarial_drift_values()
-        self._plot_drift_values(drift_values, n, self.feature_subset)
 
     def get_adversarial_correction_weights(self, max_ratio: int = 10) -> np.array:
         """

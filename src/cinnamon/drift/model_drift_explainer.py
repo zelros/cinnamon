@@ -9,8 +9,7 @@ from ..model_parser.xgboost_parser import XGBoostParser
 from ..model_parser.catboost_parser import CatBoostParser
 from ..model_parser.model_agnostic_model_parser import ModelAgnosticModelParser
 
-from .drift_utils import (compute_drift_cat, compute_drift_num, plot_drift_cat, plot_drift_num,
-                          plot_drift_cat,
+from .drift_utils import (compute_drift_cat, compute_drift_num,
                           DriftMetricsNum, PerformanceMetricsDrift,
                           compute_model_agnostic_drift_value_num,
                           compute_model_agnostic_drift_value_cat)
@@ -216,58 +215,6 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             prediction_drift.append(compute_drift_num(predictions1, predictions2, sample_weights1, sample_weights2))
         return prediction_drift
 
-    def plot_prediction_drift(self, prediction_type='raw', bins = 10,
-                              figsize: Tuple[int, int] = (7, 5),
-                              legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')) -> None:
-        """
-        Plot histogram of distribution of predictions for dataset 1 and dataset 2
-        in order to visualize a potential drift of the predicted values.
-        See the documentation in README for explanations about how it is computed,
-        especially the slide presentation.
-
-        Parameters
-        ----------
-        prediction_type: str, optional (default="raw")
-            Type of predictions to consider.
-            Choose among:
-            - "raw" : logit predictions (binary classification), log-softmax predictions
-            (multiclass classification), regular predictions (regression)
-            - "proba" : predicted probabilities (only for classification models)
-
-        bins : int or sequence of scalars or str, optional (default=10)
-            For regression only. 'two_heads' corresponds to a number of bins which is the minimum of
-            of the optimal number of bins for dataset 1 and dataset 2 taken separately.
-            Other value of "bins" parameter passed to matplotlib.pyplot.hist function are also
-            accepted.
-
-        figsize : Tuple[int, int], optional (default=(7, 5))
-            Graphic size passed to matplotlib
-
-        legend_labels : Tuple[str, str] (default=('Dataset 1', 'Dataset 2'))
-            Legend labels used for dataset 1 and dataset 2
-
-        Returns
-        -------
-        None
-        """
-        pred1, pred2 = self._get_predictions(prediction_type)
-
-        if self.task == 'classification':
-            if prediction_type == 'class':
-                plot_drift_cat(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions',
-                               max_n_cat=20, figsize=figsize, legend_labels=legend_labels)
-            else: # prediction_type in ['raw', 'proba']
-                if self._prediction_dim == 1: # binary classif
-                    plot_drift_num(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions',
-                           figsize=figsize, bins=bins, legend_labels=legend_labels)
-                else: # multiclass classif
-                    for i in range(self._prediction_dim):
-                        plot_drift_num(pred1[:, i], pred2[:, i], self.sample_weights1, self.sample_weights2,
-                                    title=f'{self.class_names[i]}', figsize=figsize, bins=bins, legend_labels=legend_labels)
-        else:  # regression or ranking
-            plot_drift_num(pred1, pred2, self.sample_weights1, self.sample_weights2, title=f'Predictions',
-                           figsize=figsize, bins=bins, legend_labels=legend_labels)
-
     def get_performance_metrics_drift(self) -> PerformanceMetricsDrift:
         """
         Compute performance metrics on dataset 1 and dataset 2.
@@ -319,40 +266,9 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             self._tree_based_drift_values_sum_check = True
         return self._model_parser.compute_tree_based_drift_values(type)
 
-    def plot_tree_based_drift_values(self, n: int = 10, type: str = TreeBasedDriftValueType.MEAN.value) -> None:
-        """
-        Plot drift values computed using the tree structures present in the model.
-
-        See the documentation in README for explanations about how it is computed,
-        especially the slide presentation.
-
-        Parameters
-        ----------
-        n : int, optional (default=10)
-            Top n features to represent in the plot.
-
-        type: str, optional (default="node_size")
-            Method used for drift values computation.
-            Choose among:
-            - "node_size" (recommended)
-            - "mean"
-            - "mean_norm"
-
-            See details in slide presentation.
-
-        Returns
-        -------
-        None
-        """
-        if self._model_parser is None:
-            raise ValueError('You need to run drift_explainer.fit before you can plot drift_values')
-
-        drift_values = self.get_tree_based_drift_values(type=type)
-        self._plot_drift_values(drift_values, n, self.feature_names)
-
     def _get_predictions(self, prediction_type: str) -> Tuple[np.array, np.array]:
         if self.predictions1 is None:
-            raise ValueError('You must call the fit method before ploting drift')
+            raise ValueError('You must call the fit method before accessing the predictions')
         if prediction_type not in ['raw', 'proba', 'class']:
             raise ValueError(f'Bad value for prediction_type: {prediction_type}')
         if prediction_type == 'raw':
@@ -390,41 +306,6 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             drift_values.append(drift_value)
         return np.array(drift_values)
     
-    def plot_model_agnostic_drift_values(self, n: int = 10, type: str = ModelAgnosticDriftValueType.MEAN.value, prediction_type: str = "raw",
-                                        max_ratio: float = 10, max_n_cat: int = 20) -> None:
-        if type not in [x.value for x in ModelAgnosticDriftValueType]:
-            raise ValueError(f'Bad value for "type": {type}')
-        drift_values = self.get_model_agnostic_drift_values(type, prediction_type, max_ratio, max_n_cat)
-        self._plot_drift_values(drift_values, n, self.feature_names)
-
-    def plot_tree_drift(self, tree_idx: int, type: str = TreeBasedDriftValueType.NODE_SIZE.value) -> None:
-        """
-        Plot the representation of a given tree in the model, to illustrate how
-        drift values are computed.
-
-        See the documentation in README for explanations about how it is computed,
-        especially the slide presentation.
-
-        Parameters
-        ----------
-        tree_idx : int
-            Index of the tree to plot
-
-        type: str, optional (default="node_size")
-            Method used for drift values computation.
-            Choose among:
-            - "node_size" (recommended)
-            - "mean"
-            - "mean_norm"
-
-            See details in slide presentation.
-
-        Returns
-        -------
-        None
-        """
-        self._model_parser.plot_tree_drift(tree_idx, type, self.feature_names)
-
     def get_tree_based_correction_weights(self, max_depth: int = None, max_ratio: int = 10) -> np.array:
         """
         Not recommended way to compute correction weights for data drift (only for

@@ -1,5 +1,6 @@
 import numpy as np
-from .drift_utils import AbstractDriftMetrics, compute_drift_num, compute_drift_cat, plot_drift_num, plot_drift_cat
+from .drift_utils import AbstractDriftMetrics, compute_drift_num, compute_drift_cat
+from ..plot.drift.plot_utils import plot_drift_num, plot_drift_cat
 from typing import List, Tuple, Union
 from ..common.logging import cinnamon_logger
 from ..common.dev_utils import find_uniques

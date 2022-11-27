@@ -125,17 +125,6 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
             drift_values_details.append(drift_values_tree)
         return drift_values  #, drift_values_details
 
-    def plot_tree_drift(self, tree_idx: int, type: str, feature_names: List[str]) -> None:
-        if self.node_weights1 is None:
-            raise ValueError('You need to run drift_explainer.fit before calling plot_tree_drift')
-        if type not in [e.value for e in TreeBasedDriftValueType]:
-            raise ValueError(f'Bad value for "type"')
-        else:
-            self.trees[tree_idx].plot_drift(node_weights1=self.node_weights1[tree_idx],
-                                                         node_weights2=self.node_weights2[tree_idx],
-                                                         type=type,
-                                                         feature_names=feature_names)
-
     def compute_tree_based_correction_weights(self, X1: pd.DataFrame, max_depth: int, max_ratio: int,
                                               sample_weights1: np.array) -> np.array:
         weights_all = np.zeros((X1.shape[0], self.n_trees))
