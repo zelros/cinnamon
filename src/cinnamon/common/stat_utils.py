@@ -9,7 +9,7 @@ from pandas.testing import assert_frame_equal
 from .math_utils import sigmoid, softmax
 from typing import List
 from scipy.spatial.distance import jensenshannon
-from.constants import FLOAT_atol
+from.constants import DEFAULT_atol, DEFAULT_rtol
 
 # ---------------------------------------
 #        Compute performance metrics ML
@@ -18,7 +18,7 @@ from.constants import FLOAT_atol
 
 @dataclass
 class PerformanceMetrics:
-    def assert_equal(self, other) -> None:
+    def assert_equal(self, other, rtol: float = DEFAULT_rtol, atol: float = DEFAULT_atol) -> None:
         pass
 
 
@@ -27,10 +27,10 @@ class RegressionMetrics(PerformanceMetrics):
     mse: float
     explained_variance: float
 
-    def assert_equal(self, other) -> None:
+    def assert_equal(self, other, rtol: float = DEFAULT_rtol, atol: float = DEFAULT_atol) -> None:
         assert isinstance(other, RegressionMetrics)
-        assert_allclose(self.mse, other.mse, atol=FLOAT_atol)
-        assert_allclose(self.explained_variance, other.explained_variance, atol=FLOAT_atol)
+        assert_allclose(self.mse, other.mse, rtol=rtol, atol=atol)
+        assert_allclose(self.explained_variance, other.explained_variance, rtol=rtol, atol=atol)
 
 
 @dataclass
@@ -38,16 +38,16 @@ class ClassificationMetrics(PerformanceMetrics):
     accuracy: float
     log_loss: float = None
 
-    def assert_equal(self, other) -> None:
+    def assert_equal(self, other, rtol: float = DEFAULT_rtol, atol: float = DEFAULT_atol) -> None:
         assert isinstance(other, ClassificationMetrics)
-        assert_allclose(self.accuracy, other.accuracy, atol=FLOAT_atol)
-        self.__assert_equal_or_none(self.log_loss, other.log_loss)
+        assert_allclose(self.accuracy, other.accuracy, rtol=rtol, atol=atol)
+        self.__assert_equal_or_none(self.log_loss, other.log_loss, rtol=rtol, atol=atol)
 
     @staticmethod
-    def __assert_equal_or_none(x, y):
+    def __assert_equal_or_none(x, y, rtol: float = DEFAULT_rtol, atol: float = DEFAULT_atol):
         assert (x is not None) == (y is not None)
         if x is not None:
-            assert_allclose(x, y, atol=FLOAT_atol)
+            assert_allclose(x, y, rtol=rtol, atol=atol)
 
 
 def compute_classification_metrics(y_true: np.array, y_pred: np.array, sample_weights: np.array,
@@ -101,7 +101,9 @@ def compute_regression_metrics(y_true: np.array, y_pred: np.array, sample_weight
 # --------------------------------
 
 def compute_distributions_cat(a1: np.array, a2: np.array, sample_weights1=None, sample_weights2=None,
-                             max_n_cat: int = None):
+                             max_n_cat: int = None, return_category_map: bool = False):
+    a1 = a1.astype(str)
+    a2 = a2.astype(str)
     if sample_weights1 is None:
         sample_weights1 = np.ones_like(a1)
     if sample_weights2 is None:
@@ -147,13 +149,24 @@ def compute_distributions_cat(a1: np.array, a2: np.array, sample_weights1=None, 
             distrib[cat] = [np.sum(sample_weights1[a1 == cat]) / total_weight1,
                             np.sum(sample_weights2[a2 == cat]) / total_weight2]
 
-    return distrib
+    if return_category_map:
+        return distrib, cat_map
+    else:
+        return distrib
 
 
-def compute_distributions_num(a1: np.array, a2: np.array, bins, sample_weights1=None, sample_weights2=None):
+def find_optimal_bins_count(a1: np.array, a2: np.array) -> int:
+    # use the "auto" mode of numpy on sample 1 and 2 to compute the optimal number of bins (taking the minimum)
+    return max(min(len(np.histogram_bin_edges(a1, bins='scott')), len(np.histogram_bin_edges(a2, bins='scott')))-1, 1)
+
+
+def compute_distributions_num(a1: np.array, a2: np.array, bins, sample_weights1=None, sample_weights2=None, density=False):
+    # remark: density = True does not correspond to the sum of hist1 (resp. hist2) values being equal to 1.
+    if bins == 'two_heads':
+        bins = find_optimal_bins_count(a1, a2)
     bin_edges = np.histogram_bin_edges(np.concatenate((a1, a2)), bins=bins)
-    hist1 = np.histogram(a1, bins=bin_edges, weights=sample_weights1, density=False)[0]
-    hist2 = np.histogram(a2, bins=bin_edges, weights=sample_weights2, density=False)[0]
+    hist1 = np.histogram(a1, bins=bin_edges, weights=sample_weights1, density=density)[0]
+    hist2 = np.histogram(a2, bins=bin_edges, weights=sample_weights2, density=density)[0]
     return {'bin_edges': bin_edges, 'hist1': hist1, 'hist2': hist2}
 
 
@@ -246,8 +259,8 @@ class BaseStatisticalTestResult:
 
     def assert_equal(self, other):
         assert isinstance(other, BaseStatisticalTestResult)
-        assert_allclose(self.statistic, other.statistic, atol=FLOAT_atol)
-        assert_allclose(self.pvalue, other.pvalue, atol=FLOAT_atol)
+        assert_allclose(self.statistic, other.statistic, atol=DEFAULT_atol)
+        assert_allclose(self.pvalue, other.pvalue, atol=DEFAULT_atol)
 
 
 @dataclass(frozen=True)
@@ -257,7 +270,7 @@ class Chi2TestResult(BaseStatisticalTestResult):
 
     def assert_equal(self, other):
         assert isinstance(other, Chi2TestResult)
-        # atol != FLOAT_atol, bellow. Because pbm with CI in Python 3.6 (result of chi2 test differs in Python 3.6 CI env)
+        # atol != DEFAULT_atol, bellow. Because pbm with CI in Python 3.6 (result of chi2 test differs in Python 3.6 CI env)
         assert_allclose(self.statistic, other.statistic, atol=2e-3)
         assert_allclose(self.pvalue, other.pvalue, atol=4e-2)
         assert self.dof == other.dof

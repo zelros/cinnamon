@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from xgboost import XGBClassifier
 from sklearn.model_selection import KFold
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 from .abstract_drift_explainer import AbstractDriftExplainer
 from ..common.math_utils import threshold_array
 
@@ -97,12 +97,13 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
         self.kf_splits: List[Tuple[np.array, np.array]] = []
 
     def fit(self, X1: pd.DataFrame, X2: pd.DataFrame, y1: np.array = None, y2: np.array = None,
-            sample_weights1: np.array = None, sample_weights2: np.array = None):
+            sample_weights1: np.array = None, sample_weights2: np.array = None,
+            cat_feature_indices: Optional[List[int]] = None):
         """
         Fit the adversarial drift explainer to dataset 1 and dataset 2.
         Only X1, X2, sample_weights1 and sample_weights2 are used to build the
         adversarial drift explainer. y1 and y2 are only only used if call to
-        get_target_drift or plot_target_drift methods is made.
+        get_target_drift method is made.
 
         Parameters
         ----------
@@ -134,12 +135,12 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
             The fitted adversarial drift explainer.
         """
         # Check arguments and save them as attributes
-        self._check_fit_arguments(X1, X2, y1, y2, sample_weights1, sample_weights2)
+        self._check_fit_arguments(X1, X2, y1, y2, sample_weights1, sample_weights2, cat_feature_indices)
 
         # set some class attributes
         self.n_features = self._get_n_features(self.X1)
         self.feature_names = self._get_feature_names(self.X1)
-        self.cat_feature_indices = self._get_cat_feature_indices()
+        self.cat_feature_indices = self._get_cat_feature_indices(cat_feature_indices)
         self.class_names = self._get_class_names(self.task, self.y1, self.y2)
         self.feature_subset = self._get_feature_subset(self.feature_subset, self.X1)
         self.task = self._get_task(y1, y2)
@@ -151,7 +152,7 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
                                            self.verbosity, self.learning_rate, self.tree_method)
         return self
 
-    def get_adversarial_drift_values(self):
+    def get_adversarial_drift_importances(self):
         """
         Compute drift values using the adversarial method. Here the drift values
         correspond to the means of the feature importance taken over the
@@ -162,32 +163,11 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
 
         Returns
         -------
-        drift_values : numpy array
+        drift_importances : numpy array
         """
         model_importances = [model.feature_importances_ for model in self.cv_adversarial_models]
         mean_importances = np.mean(model_importances, axis=0).reshape(-1, 1)
         return mean_importances
-
-    def plot_adversarial_drift_values(self, n: int = 10):
-        """
-        Plot drift values computed using the adversarial method. Here the drift values
-        correspond to the means of the feature importance taken over the n_splits
-        cross-validated adversarial classifiers.
-
-        See the documentation in README for explanations about how it is computed,
-        especially the slide presentation.
-
-        Parameters
-        ----------
-        n : interger, optional (default=10)
-            Top n features to represent in the plot.
-
-        Returns
-        -------
-        None
-        """
-        drift_values = self.get_adversarial_drift_values()
-        self._plot_drift_values(drift_values, n, self.feature_subset)
 
     def get_adversarial_correction_weights(self, max_ratio: int = 10) -> np.array:
         """
@@ -251,10 +231,12 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
                                 max_depth=max_depth,
                                 tree_method=tree_method,
                                 use_label_encoder=False,
-                                seed=seed)
+                                seed=seed,
+                                eval_metric=['error', 'auc', 'logloss'],
+                                early_stopping_rounds=20)
             log_frequency = 10 if verbosity else 0
-            clf.fit(X=X_train, y=y_train, eval_set=[(X_valid, y_valid)], early_stopping_rounds=20,
-                    sample_weight=sample_weights_train, verbose=log_frequency, eval_metric=['error', 'auc', 'logloss'],
+            clf.fit(X=X_train, y=y_train, eval_set=[(X_valid, y_valid)],
+                    sample_weight=sample_weights_train, verbose=log_frequency,
                     sample_weight_eval_set=[sample_weights_valid])
             if verbosity:
                 # TODO: print some logs about the trained adversarial model
@@ -272,9 +254,8 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
         return X1.columns.to_list()
 
     @staticmethod
-    def _get_cat_feature_indices():
-        # FIXME: problem here with cat features... and add it to the test
-        return []
+    def _get_cat_feature_indices(cat_feature_indices: Optional[List[int]]):
+        return cat_feature_indices if cat_feature_indices else []
 
     @staticmethod
     def _get_class_names(task: str, y1, y2):
