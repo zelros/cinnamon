@@ -4,7 +4,7 @@ import json
 from .single_tree import BinaryTree
 import catboost
 import tempfile
-from typing import Tuple, Optional
+from typing import Tuple
 from .abstract_tree_ensemble_parser import AbstractTreeEnsembleParser
 from ..common.math_utils import reverse_binary_representation
 
@@ -22,7 +22,7 @@ class CatBoostParser(AbstractTreeEnsembleParser):
         super().__init__(model, model_type, iteration_range)
         self.task = task
 
-    def parse(self, iteration_range: Optional[Tuple[int, int]] = None):
+    def parse(self, iteration_range: Tuple[int, int] = None):
         tmp_file = tempfile.NamedTemporaryFile()
         self.original_model.save_model(tmp_file.name, format="json")
         self.json_cb_model = json.load(open(tmp_file.name, "r"))
@@ -191,12 +191,6 @@ class CatBoostParser(AbstractTreeEnsembleParser):
         else:  # multiclass
             return self.original_model.predict_proba(pool, ntree_start=self.iteration_range[0],
                                                      ntree_end=self.iteration_range[1])
-
-    def predict_class(self, X: pd.DataFrame):
-        pool = catboost.Pool(X, cat_features=self.cat_feature_indices)
-        return self.original_model.predict(pool, prediction_type='Class',
-                                           ntree_start=self.iteration_range[0],
-                                           ntree_end=self.iteration_range[1]).squeeze()
 
     def predict_leaf_with_model_parser(self, X):
         # TODO: common - should be put in abstract class (but pbm there is a

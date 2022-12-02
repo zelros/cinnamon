@@ -1,5 +1,5 @@
-from .abstract_model_parser import AbstractModelParser
-from typing import List, Tuple, Optional
+from .i_tree_ensemble_parser import ITreeEnsembleParser
+from typing import List, Tuple
 import pandas as pd
 import numpy as np
 
@@ -9,31 +9,40 @@ from ..common.constants import TreeBasedDriftValueType
 from ..common.logging import cinnamon_logger
 
 
-class AbstractTreeEnsembleParser(AbstractModelParser):
+class AbstractTreeEnsembleParser(ITreeEnsembleParser):
 
     logger = cinnamon_logger.getChild('TreeEnsembleParser')
 
     def __init__(self, model, model_type, iteration_range):
-        super().__init__(model, model_type)
-        self.n_trees = None
-        self.max_depth = None
-        self.trees = None
-        self.model_objective = None
-        self.n_iterations = None
-        self.base_score = None  # bias
-        self.node_weights1 = None
-        self.node_weights2 = None
+        super().__init__()
+        self.original_model = model
+        self.model_type = model_type
         self.iteration_range = iteration_range
         self.trees = None
         self.parse(iteration_range)
         self.original_model_total_iterations = None
 
-    def parse(self, iteration_range: Optional[Tuple[int, int]] = None):
-        pass
-
     def fit(self, X1, X2, sample_weights1, sample_weights2):
         self.node_weights1 = self.get_node_weights(X1, sample_weights=sample_weights1)
         self.node_weights2 = self.get_node_weights(X2, sample_weights=sample_weights2)
+
+    def get_predictions(self, X: pd.DataFrame, prediction_type: str) -> np.array:
+        # return array of shape (nb. obs, nb. class) for multiclass and shape array of shape (nb. obs, )
+        # for binary class and regression
+        """
+
+        :param X:
+        :param prediction_type: "raw" or "proba"
+        :return:
+        """
+        # array of shape (nb. obs, nb. class) for multiclass and shape array of shape (nb. obs, )
+        # for binary class and regression
+        if prediction_type == 'raw':
+            return self.predict_raw(X)
+        elif prediction_type == 'proba':
+            return self.predict_proba(X)
+        else:
+            raise ValueError(f'Bad value for prediction_type: {prediction_type}')
 
     def get_node_weights(self, X: pd.DataFrame, sample_weights: np.array) -> List[np.array]:
         """return sum of observation weights in each node of each tree of the model"""
@@ -68,7 +77,7 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
         if iteration_range is None:
             if best_iteration is not None:
                 iteration_range = (0, best_iteration)
-                AbstractTreeEnsembleParser.logger.debug('By default, the best iteration given by early stopping is used '
+                AbstractTreeEnsembleParser.logger.warning('By default, the best iteration given by early stopping is used '
                                                           'to compute "iteration_range". This behavior is consistent with '
                                                           'model.predict XGBoost default behavior.')
             else:
@@ -87,7 +96,7 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
         if not np.array_equal(self.predict_leaf_with_model_parser(X), self.predict_leaf(X)):
             self._model_parser_error()
 
-    def check_tree_based_drift_importances_sum(self, X1, X2, sample_weights1, sample_weights2) -> None:
+    def check_tree_based_drift_values_sum(self, X1, X2, sample_weights1, sample_weights2) -> None:
         sample_weights1_norm = sample_weights1 / np.sum(sample_weights1)
         sample_weights2_norm = sample_weights2 / np.sum(sample_weights2)
         if self.prediction_dim == 1:
@@ -96,12 +105,12 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
         else:
             mean_prediction_diff = np.sum(sample_weights2_norm[:, np.newaxis] * self.predict_raw(X2), axis=0) - \
                                    np.sum(sample_weights1_norm[:, np.newaxis] * self.predict_raw(X1), axis=0)
-        stat = abs(self.compute_tree_based_drift_importances(type=TreeBasedDriftValueType.MEAN.value).sum(axis=0) - mean_prediction_diff)
+        stat = abs(self.compute_tree_based_drift_values(type=TreeBasedDriftValueType.MEAN.value).sum(axis=0) - mean_prediction_diff)
         if any(stat > 10**(-6)):  # any works because difference is an array
             raise ValueError('Error in computation of tree based drift values. Your model may not be properly parsed '
                              'by CinnaMon. You can report the error here: https://github.com/zelros/cinnamon/issues')
 
-    def compute_tree_based_drift_importances(self, type: str):
+    def compute_tree_based_drift_values(self, type: str):
         """
         :param node_weights1:
         :param node_weights2:
@@ -109,21 +118,32 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
         :return:
         """
         if type == TreeBasedDriftValueType.NODE_SIZE.value:
-            drift_importances = np.zeros((self.n_features, 1))
+            drift_values = np.zeros((self.n_features, 1))
         elif type in [TreeBasedDriftValueType.MEAN.value,
                       TreeBasedDriftValueType.MEAN_NORM.value]:
-            drift_importances = np.zeros((self.n_features, self.prediction_dim))
+            drift_values = np.zeros((self.n_features, self.prediction_dim))
         else:
             raise ValueError(f'Bad value for "type": {type}')
 
-        drift_importances_details = []
+        drift_values_details = []
         for i, tree in enumerate(self.trees):
-            drift_importances_tree = tree.compute_drift_importances(self.node_weights1[i], self.node_weights2[i],
+            drift_values_tree = tree.compute_drift_values(self.node_weights1[i], self.node_weights2[i],
                                                                   type=type)
-            drift_importances = self._add_drift_importances(drift_importances, drift_importances_tree, i,
+            drift_values = self._add_drift_values(drift_values, drift_values_tree, i,
                                                          self.prediction_dim, type)
-            drift_importances_details.append(drift_importances_tree)
-        return drift_importances  #, drift_importances_details
+            drift_values_details.append(drift_values_tree)
+        return drift_values  #, drift_values_details
+
+    def plot_tree_drift(self, tree_idx: int, type: str, feature_names: List[str]) -> None:
+        if self.node_weights1 is None:
+            raise ValueError('You need to run drift_explainer.fit before calling plot_tree_drift')
+        if type not in [e.value for e in TreeBasedDriftValueType]:
+            raise ValueError(f'Bad value for "type"')
+        else:
+            self.trees[tree_idx].plot_drift(node_weights1=self.node_weights1[tree_idx],
+                                                         node_weights2=self.node_weights2[tree_idx],
+                                                         type=type,
+                                                         feature_names=feature_names)
 
     def compute_tree_based_correction_weights(self, X1: pd.DataFrame, max_depth: int, max_ratio: int,
                                               sample_weights1: np.array) -> np.array:
@@ -159,11 +179,17 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
         return weights
 
     @staticmethod
-    def _add_drift_importances(drift_importances, drift_importances_tree, i, prediction_dim, type):
-        drift_importances += drift_importances_tree
-        return drift_importances
+    def _add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
+        drift_values += drift_values_tree
+        return drift_values
 
     def predict_leaf(self, X: pd.DataFrame) -> np.array:  # output dtype = np.int32
+        pass
+
+    def predict_raw(self, X: pd.DataFrame) -> np.array:
+        pass
+
+    def predict_proba(self, X: pd.DataFrame) -> np.array:
         pass
 
     def predict_leaf_with_model_parser(self, X: pd.DataFrame) -> np.array:

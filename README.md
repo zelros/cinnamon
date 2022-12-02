@@ -96,7 +96,7 @@ Drift values can be thought as equivalent of feature importance but in terms of 
 
 ```python
 # plot drift values
->>> drift_explainer.plot_tree_based_drift_importances(n=7)
+>>> drift_explainer.plot_tree_based_drift_values(n=7)
 ```
 
 <p align="center">

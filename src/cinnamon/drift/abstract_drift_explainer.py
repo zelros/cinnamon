@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
-from typing import List, Union
+import matplotlib.pyplot as plt
+from typing import List, Tuple, Union
 
-from .drift_utils import compute_drift_cat, compute_drift_num, AbstractDriftMetrics
+from .drift_utils import compute_drift_cat, compute_drift_num, plot_drift_cat, plot_drift_num, AbstractDriftMetrics
 from ..common.logging import cinnamon_logger
 
 
@@ -76,6 +77,40 @@ class AbstractDriftExplainer:
     def _raise_no_target_error():
         raise ValueError('Either y1 or y2 was not passed in DriftExplainer.fit')
 
+    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins: int = 10,
+                          legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')):
+        """
+        Plot distributions of labels in order to
+        visualize a potential drift of the target labels.
+
+        Parameters
+        ----------
+        max_n_cat : int (default=20)
+            For multiclass classification only. Maximum number of classes to
+            represent on the plot.
+
+        bins : int (default=100)
+            For regression only. "bins" parameter passed to matplotlib.pyplot.hist function.
+
+        figsize : Tuple[int, int] (default=(7, 5))
+            Graphic size passed to matplotlib.
+
+        legend_labels : Tuple[str, str] (default=('Dataset 1', 'Dataset 2'))
+            Legend labels used for dataset 1 and dataset 2
+
+        Returns
+        -------
+        None
+        """
+        if self.y1 is None or self.y2 is None:
+            raise ValueError('"y1" or "y2" argument was not passed to drift_explainer.fit method')
+        if self.task == 'classification':
+            plot_drift_cat(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
+                           max_n_cat=max_n_cat, figsize=figsize, legend_labels=legend_labels)
+        elif self.task == 'regression':
+            plot_drift_num(self.y1, self.y2, self.sample_weights1, self.sample_weights2, title='target',
+                           figsize=figsize, bins=bins, legend_labels=legend_labels)
+
     def get_feature_drifts(self) -> List[AbstractDriftMetrics]:
         """
         Compute drift measures for all features in X.
@@ -135,6 +170,76 @@ class AbstractDriftExplainer:
         feature_index, feature_name = self._check_feature_param(feature, self.feature_names)
         return self.get_feature_drifts()[feature_index]
 
+    def plot_feature_drift(self, feature: Union[int, str], max_n_cat: int = 20, figsize: Tuple[int, int]=(7, 5),
+                           as_discrete: bool = False, bins: int = 10,
+                           legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')):
+        """
+        Plot distributions of a given feature in order to
+        visualize a potential data drift of this feature.
+
+        Parameters
+        ----------
+        feature : Union[int, str]
+            Either the column index or the name of the feature.
+
+        max_n_cat : int (default=20)
+            Maximum number of classes to represent on the plot (used only for
+            categorical feature (not supported currently) or
+            if as_discrete == True
+
+        bins : int (default=100)
+            (numerical feature only) "bins" parameter passed to matplotlib.pyplot.hist function.
+
+        figsize : Tuple[int, int] (default=(7, 5))
+            Graphic size passed to matplotlib
+
+        as_discrete: bool (default=False)
+            If a numerical feature is discrete (has few unique values), consider
+            it discrete to make the plot.
+
+        legend_labels : Tuple[str, str] (default=('Dataset 1', 'Dataset 2'))
+            Legend labels used for dataset 1 and dataset 2
+
+        Returns
+        -------
+        None
+        """
+        if self.X1 is None:
+            raise ValueError('You must call the fit method before calling "get_feature_drift"')
+        feature_index, feature_name = self._check_feature_param(feature, self.feature_names)
+        if feature_index in self.cat_feature_indices or as_discrete:
+            plot_drift_cat(self.X1.iloc[:,feature_index].values, self.X2.iloc[:,feature_index].values,
+                           self.sample_weights1, self.sample_weights2, title=feature_name, max_n_cat=max_n_cat,
+                           figsize=figsize, legend_labels=legend_labels)
+        else:
+            plot_drift_num(self.X1.iloc[:,feature_index].values, self.X2.iloc[:,feature_index].values,
+                           self.sample_weights1, self.sample_weights2, title=feature_name, figsize=figsize, bins=bins,
+                           legend_labels=legend_labels)
+
+    def _plot_drift_values(self, drift_values: np.array, n: int, feature_names: List[str]):
+        # threshold n if n > drift_values.shape[0]
+        n = min(n, drift_values.shape[0])
+
+        # sort by importance in terms of drift
+        # sort in decreasing order according to sum of absolute values of drift_values
+        order = np.abs(drift_values).sum(axis=1).argsort()[::-1].tolist()
+        ordered_names = [feature_names[i] for i in order]
+        ordered_drift_values = drift_values[order, :]
+
+        n_dim = drift_values.shape[1]
+        legend_labels = self.class_names if n_dim > 1 else []
+
+        # plot
+        fig, ax = plt.subplots(figsize=(10, 10))
+        X = np.arange(n)
+        for i in range(n_dim):
+            ax.barh(X + (n_dim-i-1)/(n_dim+1), ordered_drift_values[:n, i][::-1], height=1/(n_dim+1))
+        ax.legend(legend_labels)
+        ax.set_yticks(X + 1/(n_dim+1) * (n_dim-1)/2)
+        ax.set_yticklabels(ordered_names[:n][::-1], fontsize=15)
+        ax.set_xlabel('Drift values per feature', fontsize=15)
+        plt.show()
+
     @staticmethod
     def _check_feature_param(feature, feature_names):
         if isinstance(feature, str):
@@ -157,14 +262,13 @@ class AbstractDriftExplainer:
         pass
     """
 
-    def _check_fit_arguments(self, X1, X2, y1, y2, sample_weights1, sample_weights2, cat_feature_indices):
+    def _check_fit_arguments(self, X1, X2, y1, y2, sample_weights1, sample_weights2):
         self.sample_weights1 = self._check_sample_weights(sample_weights1, X1)
         self.sample_weights2 = self._check_sample_weights(sample_weights2, X2)
         self.X1, self.X2 = self._check_X(X1, X2)
         self._check_X_shape(self.X1, self.X2)
         self.y1 = y1
         self.y2 = y2
-        self.cat_feature_indices = cat_feature_indices
 
     @staticmethod
     def _check_sample_weights(sample_weights, X):

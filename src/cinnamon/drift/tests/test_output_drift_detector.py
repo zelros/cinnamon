@@ -26,9 +26,8 @@ def test_breast_cancer_OutputDriftDetector():
                         learning_rate=0.05,
                         max_depth=6,
                         use_label_encoder=False,
-                        seed=RANDOM_SEED,
-                        early_stopping_rounds=20)
-    clf.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], verbose=0)
+                        seed=RANDOM_SEED)
+    clf.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=20, verbose=0)
 
     # ---------------------------------
     #  case: prediction_type='proba'
@@ -54,7 +53,7 @@ def test_breast_cancer_OutputDriftDetector():
                                                                 dof=1,
                                                                 contingency_table=pd.DataFrame(
                                                                     [[148.0, 250.0], [64.0, 107.0]],
-                                                                    index=['X1', 'X2'], columns=['0', '1'])))
+                                                                    index=['X1', 'X2'], columns=[0, 1])))
     assert_drift_metrics_equal(output_drift_detector.get_target_drift(),
                                target_drift_ref)
 
@@ -79,7 +78,7 @@ def test_breast_cancer_OutputDriftDetector():
                                                                       dof=1,
                                                                       contingency_table=pd.DataFrame(
                                                                           [[148.0, 250.0], [61.0, 110.0]],
-                                                                          index=['X1', 'X2'], columns=['0', '1'])))]
+                                                                          index=['X1', 'X2'], columns=[0, 1])))]
     assert_drift_metrics_list_equal(output_drift_detector2.get_prediction_drift(),
                                     prediction_drift_ref2)
 
@@ -129,9 +128,8 @@ def test_iris_OutputDriftDetector():
                         learning_rate=0.05,
                         max_depth=6,
                         use_label_encoder=False,
-                        seed=2021,
-                        early_stopping_rounds=20)
-    clf.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], verbose=0)
+                        seed=2021)
+    clf.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=20, verbose=0)
 
     # ---------------------------------
     #  case: prediction_type='proba'
@@ -165,7 +163,7 @@ def test_iris_OutputDriftDetector():
                                                                 dof=2,
                                                                 contingency_table=pd.DataFrame(
                                                                     [[33.0, 34.0, 38.0], [17.0, 16.0, 12.0]],
-                                                                    index=['X1', 'X2'], columns=['0', '1', '2'])))
+                                                                    index=['X1', 'X2'], columns=[0, 1, 2])))
     assert_drift_metrics_equal(output_drift_detector.get_target_drift(),
                                target_drift_ref)
 
@@ -190,7 +188,7 @@ def test_iris_OutputDriftDetector():
                                                                       dof=2,
                                                                       contingency_table=pd.DataFrame(
                                                                           [[33.0, 34.0, 38.0], [17.0, 19.0, 9.0]],
-                                                                          index=['X1', 'X2'], columns=['0', '1', '2'])))]
+                                                                          index=['X1', 'X2'], columns=[0, 1, 2])))]
     assert_drift_metrics_list_equal(output_drift_detector2.get_prediction_drift(),
                                     prediction_drift_ref2)
 
@@ -249,9 +247,8 @@ def test_boston_OutputDriftDetector():
                          learning_rate=0.05,
                          max_depth=6,
                          seed=RANDOM_SEED,
-                         use_label_encoder=False,
-                         early_stopping_rounds=20)
-    model.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], verbose=0)
+                         use_label_encoder=False)
+    model.fit(X=X_train, y=y_train, eval_set=[(X_test, y_test)], early_stopping_rounds=20, verbose=0)
 
     output_drift_detector = OutputDriftDetector(task='regression')
     output_drift_detector.fit(model.predict(X_train), model.predict(X_test), y_train, y_test)

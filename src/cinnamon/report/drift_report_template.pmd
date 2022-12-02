@@ -12,7 +12,7 @@ with open('report_data.pkl', 'rb') as f:
     min_cat_weight = report_data['min_cat_weight']
 
 # const
-n_drift_importances = 10
+n_drift_values = 10
 ```
 
 # 1. Drift of the ground truth target
@@ -55,10 +55,10 @@ else:
 
 # 2.2 Explanation of the drift: feature contributions
 
-Top <%= n_drift_importances %> features in drift contributions
+Top <%= n_drift_values %> features in drift contributions
 
 ```python, echo=False, evaluate=True, name='Drift of the ground truth target'
-drift_explainer.plot_drift_importances(n=n_drift_importances)
+drift_explainer.plot_drift_values(n=n_drift_values)
 ```
 
 # 3. Drift of each input feature

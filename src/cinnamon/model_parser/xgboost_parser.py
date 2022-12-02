@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import Tuple, Optional
+from typing import Tuple
 from .single_tree import BinaryTree
 import xgboost
 from .abstract_tree_ensemble_parser import AbstractTreeEnsembleParser
@@ -53,7 +53,10 @@ class XGBoostParser(AbstractTreeEnsembleParser):
                           'reg:tweedie': 'regression',
                           }
 
-    def parse(self, iteration_range: Optional[Tuple[int, int]] = None):
+    def __init__(self, model, model_type, iteration_range):
+        super().__init__(model, model_type, iteration_range)
+
+    def parse(self, iteration_range: Tuple[int, int]):
         parsed_info = self._parse_binary(self.original_model.save_raw().lstrip(b'binf'))
         self.max_depth = parsed_info['max_depth']
         self.n_features = parsed_info['n_features']
@@ -241,13 +244,6 @@ class XGBoostParser(AbstractTreeEnsembleParser):
     def predict_proba(self, X: pd.DataFrame):
         return self.original_model.predict(xgboost.DMatrix(X), iteration_range=self.iteration_range)
 
-    def predict_class(self, X: pd.DataFrame):
-        predicted_proba = self.predict_proba(X)
-        if predicted_proba.ndim == 1:
-            return np.round(predicted_proba).astype(int)
-        else:
-            return np.argmax(predicted_proba, axis=1)
-
     def predict_leaf_with_model_parser(self, X):
         # TODO: common - should be put in abstract class (but pbm there is a
         # a small difference between XGBoostParser and CatboostParser
@@ -278,10 +274,10 @@ class XGBoostParser(AbstractTreeEnsembleParser):
         return np.array(leaf_indexes, dtype=np.float32)
 
     @staticmethod
-    def _add_drift_importances(drift_importances, drift_importances_tree, i, prediction_dim, type):
+    def _add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
         if type in [TreeBasedDriftValueType.MEAN.value,
                     TreeBasedDriftValueType.MEAN_NORM.value]:
-            drift_importances[:, (i % prediction_dim)] += drift_importances_tree[:, 0]
+            drift_values[:, (i % prediction_dim)] += drift_values_tree[:, 0]
         elif type == TreeBasedDriftValueType.NODE_SIZE.value:
-            drift_importances += drift_importances_tree
-        return drift_importances
+            drift_values += drift_values_tree
+        return drift_values

@@ -1,7 +1,6 @@
 import numpy as np
-from .drift_utils import AbstractDriftMetrics, compute_drift_num, compute_drift_cat
-from ..plot.drift.plot_utils import plot_drift_num, plot_drift_cat
-from typing import List, Tuple, Union
+from .drift_utils import AbstractDriftMetrics, compute_drift_num, compute_drift_cat, plot_drift_num, plot_drift_cat
+from typing import List, Tuple
 from ..common.logging import cinnamon_logger
 from ..common.dev_utils import find_uniques
 from ..common.stat_utils import (compute_regression_metrics, compute_classification_metrics,
@@ -233,7 +232,7 @@ class OutputDriftDetector:
             prediction_drift.append(compute_drift_cat(predictions1, predictions2, sample_weights1, sample_weights2))
         return prediction_drift
 
-    def plot_prediction_drift(self, bins = 10, figsize: Tuple[int, int] = (7, 5),
+    def plot_prediction_drift(self, bins: int = 10, figsize: Tuple[int, int] = (7, 5),
                               max_n_cat: int = 20,
                               legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')) -> None:
         """
@@ -244,11 +243,8 @@ class OutputDriftDetector:
 
         Parameters
         ----------
-        bins : int or sequence of scalars or str, optional (default=10)
-            For regression only. 'two_heads' corresponds to a number of bins which is the minimum of
-            of the optimal number of bins for dataset 1 and dataset 2 taken separately.
-            Other value of "bins" parameter passed to matplotlib.pyplot.hist function are also
-            accepted.
+        bins : int (default=100)
+            "bins" parameter passed to matplotlib.pyplot.hist function.
 
         figsize : Tuple[int, int], optional (default=(7, 5))
             Graphic size passed to matplotlib
@@ -316,7 +312,7 @@ class OutputDriftDetector:
         # TODO: put this in AbstractDriftAnalyzer
         raise ValueError('Either y1 or y2 was not passed to "fit"')
 
-    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins = 10,
+    def plot_target_drift(self, max_n_cat: int = 20, figsize: Tuple[int, int] = (7, 5), bins: int = 10,
                           legend_labels: Tuple[str, str] = ('Dataset 1', 'Dataset 2')) -> None:
         # TODO: put this in AbstractDriftAnalyzer
         """
@@ -329,11 +325,8 @@ class OutputDriftDetector:
             For multiclass classification only. Maximum number of classes to
             represent on the plot.
 
-        bins : int or sequence of scalars or str, optional (default=10)
-            For regression only. 'two_heads' corresponds to a number of bins which is the minimum of
-            of the optimal number of bins for dataset 1 and dataset 2 taken separately.
-            Other value of "bins" parameter passed to matplotlib.pyplot.hist function are also
-            accepted.
+        bins : int (default=100)
+            For regression only. "bins" parameter passed to matplotlib.pyplot.hist function.
 
         figsize : Tuple[int, int] (default=(7, 5))
             Graphic size passed to matplotlib

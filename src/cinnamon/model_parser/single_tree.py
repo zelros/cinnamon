@@ -1,4 +1,5 @@
 import numpy as np
+from treelib import Tree
 from ..common.constants import TreeBasedDriftValueType
 
 class BinaryTree:
@@ -24,7 +25,7 @@ class BinaryTree:
         self.n_nodes = len(self.children_left)
         self.split_types = split_types
 
-    def compute_drift_importances(self, node_weights1: np.array, node_weights2: np.array, type: str) -> np.array:
+    def compute_drift_values(self, node_weights1: np.array, node_weights2: np.array, type: str) -> np.array:
         """
         :param node_weights1:
         :param node_weights2: Usually correspond to train dataset
@@ -32,10 +33,10 @@ class BinaryTree:
         """
         assert len(node_weights1) == len(node_weights2)
         split_contribs = self._compute_split_contribs(node_weights1, node_weights2, type)
-        drift_importances = np.zeros((self.n_features, split_contribs.shape[1]))
+        drift_values = np.zeros((self.n_features, split_contribs.shape[1]))
         for feature_index, contribs in zip(self.split_features_index, split_contribs):
-            drift_importances[feature_index, :] += contribs
-        return drift_importances
+            drift_values[feature_index, :] += contribs
+        return drift_values
 
     def _compute_split_contribs(self, node_weights1: np.array, node_weights2: np.array, type: str):
         node_weight_fractions1 = node_weights1 / node_weights1[0]
@@ -99,6 +100,26 @@ class BinaryTree:
     @staticmethod
     def _get_leaves(children_left):
         return [i for i in range(len(children_left)) if children_left[i] == -1]
+
+    def plot_drift(self, node_weights1, node_weights2, type, feature_names):
+        split_contribs = self._compute_split_contribs(node_weights1, node_weights2, type)
+        node_weight_fractions1 = node_weights1 / node_weights1[0]
+        node_weight_fractions2 = node_weights2 / node_weights2[0]
+        tree = Tree()
+        for i in range(self.n_nodes):
+            if i == 0:
+                parent = None
+            else:
+                parent = self.get_parent(i)
+            if node_weight_fractions1[i] != 0 or node_weight_fractions2[i] != 0:
+                if self.children_left[i] == -1:
+                    tag = f'({round(node_weight_fractions1[i], 3)}, {round(node_weight_fractions2[i], 3)})'
+                else:
+                    tag = f'{feature_names[self.split_features_index[i]]} ' \
+                          f'({round(node_weight_fractions1[i], 3)}, {round(node_weight_fractions2[i], 3)}) - ' \
+                          f'{[round(x, 3) for x in split_contribs[i, :]]}'
+                tree.create_node(tag=tag, identifier=i, parent=parent)
+        tree.show()
 
     def get_parent(self, node_idx: int):
         if node_idx <= 0:
