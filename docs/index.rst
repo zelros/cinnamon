@@ -20,3 +20,14 @@ Indices and tables
 * :ref:`search`
 
 hello !
+
+
+API
+===
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+   :caption: API
+
+   api
