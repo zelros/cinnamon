@@ -103,7 +103,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         self.pred_proba1 = None
         self.pred_proba2 = None
         self._prediction_dim = None
-        self._tree_based_drift_values_sum_check = False
+        self._tree_based_drift_importances_sum_check = False
 
     def fit(self, X1: pd.DataFrame, X2: pd.DataFrame, y1: np.array=None, y2: np.array= None,
             sample_weights1: np.array = None, sample_weights2: np.array = None,
@@ -238,7 +238,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         else:  # ranking
             raise NotImplementedError('No metrics currently implemented for ranking model')
 
-    def get_tree_based_drift_values(self, type: str = TreeBasedDriftValueType.MEAN.value) -> np.array:
+    def get_tree_based_drift_importances(self, type: str = TreeBasedDriftValueType.MEAN.value) -> np.array:
         """
         Compute drift values using the tree structures present in the model.
 
@@ -258,13 +258,13 @@ class ModelDriftExplainer(AbstractDriftExplainer):
 
         Returns
         -------
-        drift_values : numpy array
+        drift_importances : numpy array
         """
-        if not self._tree_based_drift_values_sum_check:
-            self._model_parser.check_tree_based_drift_values_sum(self.X1, self.X2, self.sample_weights1,
+        if not self._tree_based_drift_importances_sum_check:
+            self._model_parser.check_tree_based_drift_importances_sum(self.X1, self.X2, self.sample_weights1,
                                                                   self.sample_weights2)
-            self._tree_based_drift_values_sum_check = True
-        return self._model_parser.compute_tree_based_drift_values(type)
+            self._tree_based_drift_importances_sum_check = True
+        return self._model_parser.compute_tree_based_drift_importances(type)
 
     def _get_predictions(self, prediction_type: str) -> Tuple[np.array, np.array]:
         if self.predictions1 is None:
@@ -279,21 +279,21 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             pred1, pred2 = self.pred_class1, self.pred_class2
         return pred1, pred2
 
-    def get_model_agnostic_drift_values(self, type: str = ModelAgnosticDriftValueType.MEAN.value, prediction_type: str = "raw",
+    def get_model_agnostic_drift_importances(self, type: str = ModelAgnosticDriftValueType.MEAN.value, prediction_type: str = "raw",
                                         max_ratio: float = 10, max_n_cat: int = 20) -> np.array:
         if type not in [x.value for x in ModelAgnosticDriftValueType]:
             raise ValueError(f'Bad value for "type": {type}')
         pred1, pred2 = self._get_predictions(prediction_type)
-        return self._compute_model_agnostic_drift_values(self.X1, self.X2, type, self.sample_weights1, self.sample_weights2,
+        return self._compute_model_agnostic_drift_importances(self.X1, self.X2, type, self.sample_weights1, self.sample_weights2,
                                                            pred1, pred2, self.n_features, self.cat_feature_indices,
                                                            max_ratio, max_n_cat)
 
     @staticmethod
-    def _compute_model_agnostic_drift_values(X1: pd.DataFrame, X2: pd.DataFrame, type: str, sample_weights1: np.array,
+    def _compute_model_agnostic_drift_importances(X1: pd.DataFrame, X2: pd.DataFrame, type: str, sample_weights1: np.array,
                                                sample_weights2: np.array, predictions1: np.array, predictions2: np.array, n_features: int,
                                                cat_feature_indices: List[int], max_ratio: float, max_n_cat: int) -> np.array:
 
-        drift_values = []
+        drift_importances = []
         for i in range(n_features):
             if i in cat_feature_indices:
                 drift_value = compute_model_agnostic_drift_value_cat(X1.iloc[:, i].values, X2.iloc[:, i].values, type,
@@ -303,15 +303,15 @@ class ModelDriftExplainer(AbstractDriftExplainer):
                 drift_value = compute_model_agnostic_drift_value_num(X1.iloc[:, i].values, X2.iloc[:, i].values, type, 
                                                                     sample_weights1, sample_weights2,
                                                                     predictions1, predictions2, bins='two_heads', max_ratio=max_ratio)
-            drift_values.append(drift_value)
-        return np.array(drift_values)
+            drift_importances.append(drift_value)
+        return np.array(drift_importances)
     
     def get_tree_based_correction_weights(self, max_depth: int = None, max_ratio: int = 10) -> np.array:
         """
         Not recommended way to compute correction weights for data drift (only for
         research purpose). AdversarialDriftExplainer should be preferred for this
         purpose.
-        The approach is to use similar ideas as in get_tree_based_drift_values
+        The approach is to use similar ideas as in get_tree_based_drift_importances
         in order to estimate correction weights (but first experiments show it has
         bad performance).
 

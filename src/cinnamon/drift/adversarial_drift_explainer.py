@@ -152,7 +152,7 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
                                            self.verbosity, self.learning_rate, self.tree_method)
         return self
 
-    def get_adversarial_drift_values(self):
+    def get_adversarial_drift_importances(self):
         """
         Compute drift values using the adversarial method. Here the drift values
         correspond to the means of the feature importance taken over the
@@ -163,7 +163,7 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
 
         Returns
         -------
-        drift_values : numpy array
+        drift_importances : numpy array
         """
         model_importances = [model.feature_importances_ for model in self.cv_adversarial_models]
         mean_importances = np.mean(model_importances, axis=0).reshape(-1, 1)

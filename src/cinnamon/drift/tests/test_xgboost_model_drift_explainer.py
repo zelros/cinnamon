@@ -52,8 +52,8 @@ def test_boston_xgboost_ModelDriftExplainer():
                                                                    RegressionMetrics(mse=12.419719495108291,
                                                                                      explained_variance=0.8095694395593922)))
 
-    # tree_based_drift_values "node_size"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='node_size'),
+    # tree_based_drift_importances "node_size"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='node_size'),
                     np.array([[4.31765569],
                               [0.53994982],
                               [1.2299105 ],
@@ -69,8 +69,8 @@ def test_boston_xgboost_ModelDriftExplainer():
                               [6.99832357]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean'),
+    # tree_based_drift_importances "mean"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean'),
                     np.array([[-0.04545056],
                               [ 0.00084117],
                               [ 0.18597606],
@@ -86,8 +86,8 @@ def test_boston_xgboost_ModelDriftExplainer():
                               [-0.04227164]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean_norm"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean_norm'),
+    # tree_based_drift_importances "mean_norm"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean_norm'),
                     np.array([[ 0.05234698],
                               [ 0.0058806 ],
                               [ 0.00328171],
@@ -104,7 +104,7 @@ def test_boston_xgboost_ModelDriftExplainer():
                     atol=NUMPY_atol)
 
     # model agnostic drift importances "mean"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='mean'),
                     np.array([[-0.03586116],
        [-0.05753988],
        [-0.35207563],
@@ -121,7 +121,7 @@ def test_boston_xgboost_ModelDriftExplainer():
                     atol=NUMPY_atol)
 
     # model agnostic drift importances "wasserstein"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='wasserstein'),
                     np.array([[0.14233877],
        [0.08907334],
        [0.56672501],
@@ -401,8 +401,8 @@ def test_breast_cancer_xgboost_ModelDriftExplainer():
                                            PerformanceMetricsDrift(ClassificationMetrics(accuracy=1.0, log_loss=0.016039305599991362),
                                                                    ClassificationMetrics(accuracy=0.9473684210526315, log_loss=0.11116574995208815)))
 
-    # tree_based_drift_values "node_size"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='node_size'),
+    # tree_based_drift_importances "node_size"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='node_size'),
                     np.array([[0.1263785 ],
                               [0.86245768],
                               [0.03015075],
@@ -435,8 +435,8 @@ def test_breast_cancer_xgboost_ModelDriftExplainer():
                               [0.05313921]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean'),
+    # tree_based_drift_importances "mean"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean'),
                     np.array([[-9.33158904e-03],
                               [ 1.15870292e-02],
                               [ 2.25198024e-03],
@@ -469,8 +469,8 @@ def test_breast_cancer_xgboost_ModelDriftExplainer():
                               [-2.78114137e-03]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean_norm"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean_norm'),
+    # tree_based_drift_importances "mean_norm"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean_norm'),
                     np.array([[ 0.00128017],
                               [-0.00862285],
                               [ 0.00227804],
@@ -504,7 +504,7 @@ def test_breast_cancer_xgboost_ModelDriftExplainer():
                     atol=NUMPY_atol)
 
     # model agnostic drift importances "mean"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='mean'),
                     np.array([[-0.24681117],
        [-0.17099081],
        [-0.18950497],
@@ -538,7 +538,7 @@ def test_breast_cancer_xgboost_ModelDriftExplainer():
                     atol=NUMPY_atol)
 
     # model agnostic drift importances "wasserstein"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='wasserstein'),
                     np.array([[0.24782544],
        [0.1718289 ],
        [0.19956756],
@@ -892,24 +892,24 @@ def test_iris_xgboost_XGBClassifier():
                                            PerformanceMetricsDrift(ClassificationMetrics(accuracy=1.0, log_loss=0.045063073312242824),
                                                                    ClassificationMetrics(accuracy=0.9333333333333333, log_loss=0.16192325585418277)))
 
-    # tree_based_drift_values "node_size"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='node_size'),
+    # tree_based_drift_importances "node_size"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='node_size'),
                     np.array([[ 1.96002375],
                               [ 4.03749391],
                               [16.37810068],
                               [24.55940758]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean'),
+    # tree_based_drift_importances "mean"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean'),
                     np.array([[ 0.        ,  0.18063744, -0.0278192 ],
                               [ 0.        , -0.00393914, -0.06837239],
                               [ 0.31093455,  0.03153828, -0.26869759],
                               [ 0.        ,  0.11504829, -0.19151622]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean_norm"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean_norm'),
+    # tree_based_drift_importances "mean_norm"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean_norm'),
                     np.array([[ 0.        ,  0.01680469,  0.00507903],
                               [ 0.        , -0.00718861,  0.02268815],
                               [ 0.31093455, -0.12144406,  0.0417556 ],
@@ -917,7 +917,7 @@ def test_iris_xgboost_XGBClassifier():
                     atol=NUMPY_atol)
 
      # model agnostic drift importances "mean"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='mean'),
                     np.array([[ 0.33114533, -0.3054805 , -0.02762587],
        [-0.22332019,  0.06592673,  0.1509402 ],
        [ 0.31093458, -0.13290085, -0.17650054],
@@ -925,7 +925,7 @@ def test_iris_xgboost_XGBClassifier():
                     atol=NUMPY_atol)
    
      # model agnostic drift importances "wasserstein"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='wasserstein'),
                     np.array([[0.33114533, 0.3054805 , 0.04849667],
        [0.22332019, 0.06711302, 0.15096001],
        [0.31093458, 0.1341113 , 0.17650054],

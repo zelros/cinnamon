@@ -85,7 +85,7 @@ def test_AmesHousing_LinearRegression_ModelDriftExplainer():
                                             rtol=1e-5, atol=1e4)
 
     # model agnostic drift importances "mean"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='mean'),
                     np.array([[22.09852279],
                               [-2742.93098179],
                               [-1272.03892043],
@@ -150,7 +150,7 @@ def test_AmesHousing_LinearRegression_ModelDriftExplainer():
                     atol=NUMPY_atol)
 
     # model agnostic drift importances "mean"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='wasserstein'),
                     np.array([[132.7379132],
                               [2742.93098179],
                               [1273.53420285],

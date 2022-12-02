@@ -59,7 +59,7 @@ def test_LogisticRegression_ModelDriftExplainer():
                                     prediction_drift_class_ref, rtol=1e-5, atol=1e5)
 
     # model agnostic drift importances "mean"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='mean'),
                     np.array([[0.19032076],
                               [-0.28289169],
                               [0.33290967],
@@ -93,7 +93,7 @@ def test_LogisticRegression_ModelDriftExplainer():
                     atol=1e-2)
 
     # model agnostic drift values "wasserstein"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='wasserstein'),
                     np.array([[1.03235411],
                               [0.39986026],
                               [1.0088181],
@@ -214,7 +214,7 @@ def test_iris_LogisticRegression_ModelDriftExplainer():
                                                                                                        index=['X1', 'X2'], columns=['0', '1', '2']))))
 
     # model agnostic drift importances "mean"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='mean'),
                     np.array([[0.53218358,  0.03371401, -0.56589759],
                               [-0.53260398, -0.04423636,  0.57684034],
                               [0.69789646,  0.05740799, -0.75530445],
@@ -222,7 +222,7 @@ def test_iris_LogisticRegression_ModelDriftExplainer():
                     atol=1e-3)
 
     # model agnostic drift importances "wasserstein"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='wasserstein'),
                     np.array([[0.56914095, 0.04106184, 0.59482062],
                               [0.54119694, 0.04603877, 0.58388156],
                               [0.69789646, 0.05740799, 0.75530445],

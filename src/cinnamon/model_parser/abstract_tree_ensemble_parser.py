@@ -87,7 +87,7 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
         if not np.array_equal(self.predict_leaf_with_model_parser(X), self.predict_leaf(X)):
             self._model_parser_error()
 
-    def check_tree_based_drift_values_sum(self, X1, X2, sample_weights1, sample_weights2) -> None:
+    def check_tree_based_drift_importances_sum(self, X1, X2, sample_weights1, sample_weights2) -> None:
         sample_weights1_norm = sample_weights1 / np.sum(sample_weights1)
         sample_weights2_norm = sample_weights2 / np.sum(sample_weights2)
         if self.prediction_dim == 1:
@@ -96,12 +96,12 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
         else:
             mean_prediction_diff = np.sum(sample_weights2_norm[:, np.newaxis] * self.predict_raw(X2), axis=0) - \
                                    np.sum(sample_weights1_norm[:, np.newaxis] * self.predict_raw(X1), axis=0)
-        stat = abs(self.compute_tree_based_drift_values(type=TreeBasedDriftValueType.MEAN.value).sum(axis=0) - mean_prediction_diff)
+        stat = abs(self.compute_tree_based_drift_importances(type=TreeBasedDriftValueType.MEAN.value).sum(axis=0) - mean_prediction_diff)
         if any(stat > 10**(-6)):  # any works because difference is an array
             raise ValueError('Error in computation of tree based drift values. Your model may not be properly parsed '
                              'by CinnaMon. You can report the error here: https://github.com/zelros/cinnamon/issues')
 
-    def compute_tree_based_drift_values(self, type: str):
+    def compute_tree_based_drift_importances(self, type: str):
         """
         :param node_weights1:
         :param node_weights2:
@@ -109,21 +109,21 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
         :return:
         """
         if type == TreeBasedDriftValueType.NODE_SIZE.value:
-            drift_values = np.zeros((self.n_features, 1))
+            drift_importances = np.zeros((self.n_features, 1))
         elif type in [TreeBasedDriftValueType.MEAN.value,
                       TreeBasedDriftValueType.MEAN_NORM.value]:
-            drift_values = np.zeros((self.n_features, self.prediction_dim))
+            drift_importances = np.zeros((self.n_features, self.prediction_dim))
         else:
             raise ValueError(f'Bad value for "type": {type}')
 
-        drift_values_details = []
+        drift_importances_details = []
         for i, tree in enumerate(self.trees):
-            drift_values_tree = tree.compute_drift_values(self.node_weights1[i], self.node_weights2[i],
+            drift_importances_tree = tree.compute_drift_importances(self.node_weights1[i], self.node_weights2[i],
                                                                   type=type)
-            drift_values = self._add_drift_values(drift_values, drift_values_tree, i,
+            drift_importances = self._add_drift_importances(drift_importances, drift_importances_tree, i,
                                                          self.prediction_dim, type)
-            drift_values_details.append(drift_values_tree)
-        return drift_values  #, drift_values_details
+            drift_importances_details.append(drift_importances_tree)
+        return drift_importances  #, drift_importances_details
 
     def compute_tree_based_correction_weights(self, X1: pd.DataFrame, max_depth: int, max_ratio: int,
                                               sample_weights1: np.array) -> np.array:
@@ -159,9 +159,9 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
         return weights
 
     @staticmethod
-    def _add_drift_values(drift_values, drift_values_tree, i, prediction_dim, type):
-        drift_values += drift_values_tree
-        return drift_values
+    def _add_drift_importances(drift_importances, drift_importances_tree, i, prediction_dim, type):
+        drift_importances += drift_importances_tree
+        return drift_importances
 
     def predict_leaf(self, X: pd.DataFrame) -> np.array:  # output dtype = np.int32
         pass

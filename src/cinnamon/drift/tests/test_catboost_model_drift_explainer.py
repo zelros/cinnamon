@@ -48,8 +48,8 @@ def test_boston_catboost_ModelDriftExplainer():
                                                                    RegressionMetrics(mse=9.57426222359859,
                                                                                      explained_variance=0.8537685044683866)))
 
-    # tree_based_drift_values "node_size"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='node_size'),
+    # tree_based_drift_importances "node_size"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='node_size'),
                     np.array([[1.90483198],
                               [0.42289995],
                               [0.84419323],
@@ -65,8 +65,8 @@ def test_boston_catboost_ModelDriftExplainer():
                               [4.08308837]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean'),
+    # tree_based_drift_importances "mean"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean'),
                     np.array([[ 0.06869412],
                               [-0.00890033],
                               [ 0.00371266],
@@ -82,8 +82,8 @@ def test_boston_catboost_ModelDriftExplainer():
                               [-0.362645  ]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean_norm"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean_norm'),
+    # tree_based_drift_importances "mean_norm"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean_norm'),
                     np.array([[ 0.0028605 ],
                               [-0.01031604],
                               [-0.02142061],
@@ -100,7 +100,7 @@ def test_boston_catboost_ModelDriftExplainer():
                     atol=NUMPY_atol)
 
     # model agnostic drift importances "mean"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='mean'),
                     np.array([[-0.03545244],
        [-0.06795944],
        [-0.33765027],
@@ -117,7 +117,7 @@ def test_boston_catboost_ModelDriftExplainer():
                     atol=NUMPY_atol)
 
     # model agnostic drift importances "mean"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='wasserstein'),
                     np.array([[0.13655719],
        [0.09493406],
        [0.57431509],
@@ -316,8 +316,8 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
                                                                    ClassificationMetrics(accuracy=0.9590643274853801, log_loss=0.10225262245942275)))
 
 
-    # tree_based_drift_values "node_size"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='node_size'),
+    # tree_based_drift_importances "node_size"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='node_size'),
                     np.array([[0.32509379],
                               [1.32677547],
                               [0.80774132],
@@ -350,8 +350,8 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
                               [0.48788657]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean'),
+    # tree_based_drift_importances "mean"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean'),
                     np.array([[-0.00512973],
                               [-0.07137614],
                               [-0.03603572],
@@ -384,8 +384,8 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
                               [-0.02809828]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean_norm"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean_norm'),
+    # tree_based_drift_importances "mean_norm"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean_norm'),
                     np.array([[-0.00105982],
                               [-0.07325502],
                               [-0.03451459],
@@ -419,7 +419,7 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
                     atol=NUMPY_atol)
 
     # model agnostic drift values "mean"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='mean'),
                     np.array([[-0.28899426],
        [-0.21982124],
        [-0.21498822],
@@ -453,7 +453,7 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
                     atol=NUMPY_atol)
 
     # model agnostic drift values "wasserstein"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='wasserstein'),
                     np.array([[0.32594406],
        [0.22173909],
        [0.29068552],
@@ -722,24 +722,24 @@ def test_iris_catboost_ModelDriftExplainer():
                                            PerformanceMetricsDrift(ClassificationMetrics(accuracy=0.9904761904761905, log_loss=0.06196156247077523),
                                                                    ClassificationMetrics(accuracy=0.9333333333333333, log_loss=0.14716856908904924)))
 
-    # tree_based_drift_values "node_size"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='node_size'),
+    # tree_based_drift_importances "node_size"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='node_size'),
                     np.array([[ 3.88114597],
                               [ 7.84748116],
                               [ 6.75366501],
                               [11.90863769]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean'),
+    # tree_based_drift_importances "mean"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean'),
                     np.array([[-0.01354953, -0.00602339,  0.01957293],
                               [-0.05742398, -0.01429501, -0.06161435],
                               [ 0.14828041,  0.05454545, -0.00282586],
                               [ 0.17835669,  0.2194438 , -0.46446716]]),
                     atol=NUMPY_atol)
 
-    # tree_based_drift_values "mean_norm"
-    assert_allclose(drift_explainer.get_tree_based_drift_values(type='mean_norm'),
+    # tree_based_drift_importances "mean_norm"
+    assert_allclose(drift_explainer.get_tree_based_drift_importances(type='mean_norm'),
                     np.array([[-0.09855691, -0.09208058, -0.07090097],
                               [-0.09248865, -0.05182248, -0.0942603 ],
                               [-0.06083239, -0.14343543, -0.21452551],
@@ -747,7 +747,7 @@ def test_iris_catboost_ModelDriftExplainer():
                     atol=NUMPY_atol)
 
     # model agnostic drift importances "mean"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='mean'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='mean'),
                     np.array([[ 0.27410928, -0.26891114, -0.00519814],
        [-0.21751277,  0.06952641,  0.14798636],
        [ 0.27960147, -0.12182532, -0.15777616],
@@ -755,7 +755,7 @@ def test_iris_catboost_ModelDriftExplainer():
                     atol=NUMPY_atol)
 
     # model agnostic drift importances "wasserstein"
-    assert_allclose(drift_explainer.get_model_agnostic_drift_values(type='wasserstein'),
+    assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='wasserstein'),
                     np.array([[0.28117677, 0.27019063, 0.04089844],
        [0.21751277, 0.0696502 , 0.14798636],
        [0.27960147, 0.12182532, 0.15777616],

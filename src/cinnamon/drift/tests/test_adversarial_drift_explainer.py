@@ -19,8 +19,8 @@ def test_adversarial_drift_explainer():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=RANDOM_SEED)
     drift_explainer = AdversarialDriftExplainer(seed=RANDOM_SEED, verbosity=False).fit(X_train, X_test, y_train, y_test)
 
-    # adversarial_drift_values
-    assert_allclose(drift_explainer.get_adversarial_drift_values(),
+    # adversarial_drift_importances
+    assert_allclose(drift_explainer.get_adversarial_drift_importances(),
                     np.array([[0.27580956],
                               [0.3008618],
                               [0.18539894],
