@@ -6,6 +6,7 @@ name = "pypi"
 [packages]
 cinnamon = {path = './', editable = true}
 #pweave = "*"
+sphinx = "*"
 
 [dev-packages]
 build = "*"
