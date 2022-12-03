@@ -103,8 +103,7 @@ Drift values can be thought as equivalent of feature importance but in terms of 
   <img height="320px" src="doc/img/plot_drift_values.png" alt="plot_drift_values">
 </p>
 
-Here the feature `worst symmetry` is rightly identified as the one which contributes the most to 
-the data drift.
+Here the feature `worst symmetry` is rightly identified as the one which contributes the most to the data drift.
 
 ### More
 
