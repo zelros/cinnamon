@@ -70,7 +70,7 @@ Detect data drift by looking at main graphs and metrics
     # Distribution of logit predictions
     >>> drift_explainer.plot_prediction_drift(bins=15)
 
-.. image:: docs/img/plot_prediction_drift.png
+.. image:: https://github.com/zelros/cinnamon/raw/master/docs/img/plot_prediction_drift.png
     :width: 400
     :align: center
 
@@ -102,7 +102,7 @@ Drift importances can be thought as equivalent of feature importances but in ter
     # plot drift values
     >>> drift_explainer.plot_tree_based_drift_importances(n=7)
 
-.. image:: docs/img/plot_drift_values.png
+.. image:: https://github.com/zelros/cinnamon/raw/master/docs/img/plot_drift_values.png
     :width: 400
     :align: center
 

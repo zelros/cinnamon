@@ -1,6 +1,6 @@
-#########
+#############
 CinnaMon API
-#########
+#############
 
 .. currentmodule:: cinnamon
 
