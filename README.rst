@@ -50,7 +50,7 @@ Setup the data and build a model
     >>> clf = XGBClassifier(use_label_encoder=False)
     >>> clf.fit(X=X_train, y=y_train, verbose=10)
 
-Initialize ModelDriftExplainer and fit it on train and validation data
+Initialize ModelDriftExplainer and fit on train and validation data
 -------------------------------------------------------------------------
 
 .. code:: python
