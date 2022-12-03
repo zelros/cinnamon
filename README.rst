@@ -51,7 +51,7 @@ Setup the data and build a model
     >>> clf.fit(X=X_train, y=y_train, verbose=10)
 
 Initialize ModelDriftExplainer and fit it on train and validation data
-----------------------------------------------------------------------==
+-------------------------------------------------------------------------
 
 .. code:: python
 
@@ -89,8 +89,8 @@ can also compute the corresponding drift metrics:
 Comparing the distributions of predictions for two datasets is one of the main 
 indicator we use in order to detect data drift. The two other indicators are:
 
-- distribution of the target (see `get_target_drift`)
-- performance metrics (see `get_performance_metrics_drift`)
+- distribution of the target (see ``get_target_drift``)
+- performance metrics (see ``get_performance_metrics_drift``)
 
 Explain data drift by computing the drift importances
 --------------------------------------------------------
@@ -106,7 +106,7 @@ Drift importances can be thought as equivalent of feature importances but in ter
     :width: 400
     :align: center
 
-Here the feature `worst symmetry` is rightly identified as the one which contributes the most to the data drift.
+Here the feature ``worst symmetry`` is rightly identified as the one which contributes the most to the data drift.
 
 More
 ------
@@ -116,7 +116,7 @@ See "notes" below to explore all the functionalities of CinnaMon.
 🛠 Installation
 =================
 
-CinnaMon is intended to work with **Python 3.7 or above**. Installation can be done with `pip`:
+CinnaMon is intended to work with **Python 3.7 or above**. Installation can be done with ``pip``:
 
 .. code:: sh
     
@@ -125,16 +125,16 @@ CinnaMon is intended to work with **Python 3.7 or above**. Installation can be d
 🔗 Notes
 ===========
 
-- The two main classes of CinnaMon are `ModelDriftExplainer` and `AdversarialDriftExplainer`
-- `ModelDriftExplainer` currently only support `XGBoost` models (both regression and classification
+- The two main classes of CinnaMon are ``ModelDriftExplainer`` and ``AdversarialDriftExplainer``
+- ``ModelDriftExplainer`` currently only support ``XGBoost`` models (both regression and classification
   are supported)
-- See notebooks in the `examples/` directory to have an overview of all functionalities. 
+- See notebooks in the ``examples/`` directory to have an overview of all functionalities. 
   Notably:
 
   - `Covariate shift example with IEEE data <https://github.com/zelros/cinnamon/blob/master/examples/ieee_fraud_simulated_covariate_shift_card6.ipynb>`_
   - `Concept drift example with IEEE data <https://github.com/zelros/cinnamon/blob/master/examples/ieee_fraud_simulated_concept_drift_card6.ipynb>`_
     
-  These two notebooks also go deeper into the topic of how to correct data drift, making use of `AdversarialDriftExplainer`
+  These two notebooks also go deeper into the topic of how to correct data drift, making use of ``AdversarialDriftExplainer``
 - See also the `slide presentation <https://yohannlefaou.github.io/publications/2021-cinnamon/Detect_explain_and_correct_data_drift_in_a_machine_learning_system.pdf>`_ of the CinnaMon library.
 - There is (yet) no formal documentation for CinnaMon but docstrings are up to date for the two main classes.
 
