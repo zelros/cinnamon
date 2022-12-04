@@ -32,8 +32,10 @@ setup(
     install_requires=["pandas>=1.0",
                       "scikit-learn>=0.24",  # can switch to 1.0 when I switch to Python 3.7 support
                       "xgboost>=1.4",
-                      "catboost>=1.0"],
-    extras_require={"graphs": ["matplotlib>=3.4.3", "treelib>=1.6.1"]},
+                      "catboost>=1.0",
+                      "matplotlib>=3.4.3",
+                      "treelib>=1.6.1"],
+    #extras_require={"graphs": ["matplotlib>=3.4.3", "treelib>=1.6.1"]},
     keywords=["data drift", "covariate shift", "concept drift", "monitoring",
               "adversarial learning", "machine learning"],
 )
