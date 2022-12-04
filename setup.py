@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 
-with open("README.md", "r", encoding="utf-8") as f:
+with open("README.rst", "r", encoding="utf-8") as f:
     long_description = f.read()
 
 setup(
     name="cinnamon",
-    version="0.1.1",
+    version="0.2.0",
     author="Yohann Le Faou",
     author_email="lefaou.yohann@gmail.com",
     description="A monitoring tool for machine learning systems that focus on data drift",
