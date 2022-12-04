@@ -99,7 +99,7 @@ Drift importances can be thought as equivalent of feature importances but in ter
 
 .. code:: python
 
-    # plot drift values
+    # plot drift importances
     >>> drift_explainer.plot_tree_based_drift_importances(n=7)
 
 .. image:: https://github.com/zelros/cinnamon/raw/master/docs/img/plot_drift_values.png

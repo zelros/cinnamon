@@ -57,8 +57,8 @@ class AbstractDriftExplainer:
 
         Returns
         -------
-        target_drift : dict
-            Dictionary of drift measures for the labels
+        target_drift : Union[DriftMetricsCat, DriftMetricsNum]
+            Drift measures for the labels y.
         """
         if self.target_drift is not None:
             return self.target_drift
@@ -95,8 +95,8 @@ class AbstractDriftExplainer:
 
         Returns
         -------
-        feature_drift: List[dict]
-            List of dictionaries that each gives drift measures for a feature.
+        feature_drift: list of Union[DriftMetricsCat, DriftMetricsNum].
+            Drift measures for each input feature in X.
         """
         if self.feature_drifts is None:
             self.feature_drifts = self._compute_feature_drifts(self.X1, self.X2, self.n_features, self.cat_feature_indices,
@@ -122,13 +122,13 @@ class AbstractDriftExplainer:
 
         Parameters
         ----------
-        feature : Union[int, str] (default=20)
+        feature : Union[int, str]
             Either the column index of the name of the feature.
 
         Returns
         -------
-        feature_drift: dict
-            Dictionary of drift measures.
+        feature_drift: Union[DriftMetricsCat, DriftMetricsNum]
+            Drift measures of the input feature.
         """
         if self.X1 is None:
             raise ValueError('You must call the fit method before calling "get_feature_drift"')

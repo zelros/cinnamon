@@ -9,7 +9,7 @@ from ..common.math_utils import threshold_array
 
 class AdversarialDriftExplainer(AbstractDriftExplainer):
     """
-    Tool to study data drift between two datasets using a adversarial learning
+    Study data drift using a adversarial learning
     approach (i.e. training a classifier to discriminate between
     dataset 1 and dataset2). XGBClassifier is used as adversarial classifier.
 
@@ -71,8 +71,7 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
         Class names of the target when task is "classification". Otherwise equal to None.
 
     cat_feature_indices : list of int
-        Indexes of categorical features in input X (not implemented yet: only numerical
-        features are allowed currently).
+        Indexes of categorical features in input X.
 
     X1, X2 : pandas dataframes
         X1 and X2 inputs passed to the "fit" method.
@@ -103,7 +102,7 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
         Fit the adversarial drift explainer to dataset 1 and dataset 2.
         Only X1, X2, sample_weights1 and sample_weights2 are used to build the
         adversarial drift explainer. y1 and y2 are only only used if call to
-        get_target_drift method is made.
+        `get_target_drift` method is made.
 
         Parameters
         ----------
@@ -128,6 +127,9 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
         sample_weights2: numpy array of shape (n_samples,), optional (default=None)
             Array of weights that are assigned to individual samples of dataset 2
             If None, then each sample of dataset 2 is given unit weight.
+
+        cat_feature_indices : list of int, optional (default = None)
+            Indexes of categorical features in input X.
 
         Returns
         -------
@@ -154,7 +156,7 @@ class AdversarialDriftExplainer(AbstractDriftExplainer):
 
     def get_adversarial_drift_importances(self):
         """
-        Compute drift values using the adversarial method. Here the drift values
+        Compute drift importances using the adversarial method. Here the drift importances
         correspond to the means of the feature importance taken over the
         cross-validated adversarial classifiers.
 

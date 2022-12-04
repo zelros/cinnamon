@@ -98,7 +98,7 @@ class AbstractTreeEnsembleParser(AbstractModelParser):
                                    np.sum(sample_weights1_norm[:, np.newaxis] * self.predict_raw(X1), axis=0)
         stat = abs(self.compute_tree_based_drift_importances(type=TreeBasedDriftValueType.MEAN.value).sum(axis=0) - mean_prediction_diff)
         if any(stat > 10**(-6)):  # any works because difference is an array
-            raise ValueError('Error in computation of tree based drift values. Your model may not be properly parsed '
+            raise ValueError('Error in computation of tree based drift importances. Your model may not be properly parsed '
                              'by CinnaMon. You can report the error here: https://github.com/zelros/cinnamon/issues')
 
     def compute_tree_based_drift_importances(self, type: str):

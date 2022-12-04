@@ -10,7 +10,7 @@ from ...drift.model_drift_explainer import ModelDriftExplainer
 
 def plot_adversarial_drift_importances(adversarial_drift_explainer: AdversarialDriftExplainer, n: int = 10):
     """
-    Plot drift values computed using the adversarial method. Here the drift values
+    Plot drift importances computed using the adversarial method. Here the drift importances
     correspond to the means of the feature importance taken over the n_splits
     cross-validated adversarial classifiers.
 
@@ -19,6 +19,9 @@ def plot_adversarial_drift_importances(adversarial_drift_explainer: AdversarialD
 
     Parameters
     ----------
+    adversarial_drift_explainer: AdversarialDriftExplainer
+        A AdversarialDriftExplainer object.
+    
     n : interger, optional (default=10)
         Top n features to represent in the plot.
 
@@ -34,20 +37,23 @@ def plot_adversarial_drift_importances(adversarial_drift_explainer: AdversarialD
 def plot_tree_based_drift_importances(drift_explainer: ModelDriftExplainer, n: int = 10,
                                  type: str = TreeBasedDriftValueType.MEAN.value) -> None:
     """
-    Plot drift values computed using the tree structures present in the model.
+    Plot drift importances computed using the tree structure of the model.
 
     See the documentation in README for explanations about how it is computed,
     especially the slide presentation.
 
     Parameters
     ----------
+    drift_explainer: ModelDriftExplainer
+        A ModelDriftExplainer object.
+    
     n : int, optional (default=10)
         Top n features to represent in the plot.
 
-    type: str, optional (default="node_size")
-        Method used for drift values computation.
+    type: str, optional (default="mean")
+        Method used for drift importances computation.
         Choose among:
-        - "node_size" (recommended)
+        - "node_size"
         - "mean"
         - "mean_norm"
 
@@ -69,6 +75,41 @@ def plot_tree_based_drift_importances(drift_explainer: ModelDriftExplainer, n: i
 def plot_model_agnostic_drift_importances(drift_explainer: ModelDriftExplainer, n: int = 10,
                                      type: str = ModelAgnosticDriftValueType.MEAN.value, prediction_type: str = "raw",
                                      max_ratio: float = 10, max_n_cat: int = 20) -> None:
+    """
+    Plot drift importances computed using the model agnostic method.
+
+    See the documentation in README for explanations about how it is computed,
+    especially the slide presentation.
+
+    Parameters
+    ----------
+    drift_explainer: ModelDriftExplainer
+        A ModelDriftExplainer object.
+    
+    type: str, optional (default="mean")
+        Method used for drift importances computation.
+        Choose among:
+        - "mean"
+        - "wasserstein"
+
+        See details in slide presentation.
+
+    prediction_type: str,  optional (default="raw")
+        Choose among:
+        - "raw"
+        - "proba": predicted probability if task == 'classification'
+        - "class": predicted class if task == 'classification'
+
+    max_ratio: int, optional (default=10)
+        Only used for categorical features
+
+    max_n_cat: int, optional (default=20)
+        Only used for categorical features
+    
+    Returns
+    -------
+    None
+    """
     if type not in [x.value for x in ModelAgnosticDriftValueType]:
         raise ValueError(f'Bad value for "type": {type}')
     drift_importances = drift_explainer.get_model_agnostic_drift_importances(
@@ -100,5 +141,5 @@ def _plot_drift_importances(drift_explainer: AbstractDriftExplainer, drift_impor
     ax.legend(legend_labels)
     ax.set_yticks(X + 1/(n_dim+1) * (n_dim-1)/2)
     ax.set_yticklabels(ordered_names[:n][::-1], fontsize=15)
-    ax.set_xlabel('Drift values per feature', fontsize=15)
+    ax.set_xlabel('drift importances per feature', fontsize=15)
     plt.show()

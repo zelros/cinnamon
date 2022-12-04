@@ -10,23 +10,26 @@ from ...model_parser.single_tree import BinaryTree
 def plot_tree_drift(
         drift_explainer: ModelDriftExplainer,
         tree_idx: int,
-        type: str = TreeBasedDriftValueType.NODE_SIZE.value) -> None:
+        type: str = TreeBasedDriftValueType.MEAN.value) -> None:
     """
     Plot the representation of a given tree in the model, to illustrate how
-    drift values are computed.
+    drift importances are computed.
 
     See the documentation in README for explanations about how it is computed,
     especially the slide presentation.
 
     Parameters
     ----------
+    drift_explainer: ModelDriftExplainer
+        A ModelDriftExplainer object.
+
     tree_idx : int
         Index of the tree to plot
 
-    type: str, optional (default="node_size")
-        Method used for drift values computation.
+    type: str, optional (default="mean")
+        Method used for drift importances computation.
         Choose among:
-        - "node_size" (recommended)
+        - "node_size"
         - "mean"
         - "mean_norm"
 
