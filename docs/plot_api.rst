@@ -14,4 +14,3 @@ Plotting API
    plot.drift.plot_drift.plot_target_drift
    plot.drift.plot_drift.plot_feature_drift
    plot.drift.plot_drift.plot_prediction_drift
-   plot.drift.plot_tree_drift.plot_tree_drift

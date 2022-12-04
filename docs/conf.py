@@ -11,7 +11,7 @@ import sphinx_rtd_theme
 project = 'cinnamon'
 copyright = '2022, Yohann le Faou'
 author = 'Yohann le Faou'
-release = '0.2'
+release = '0.2.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
