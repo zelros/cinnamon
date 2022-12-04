@@ -13,6 +13,9 @@ def plot_target_drift(drift_explainer: AbstractDriftExplainer, max_n_cat: int = 
 
     Parameters
     ----------
+    drift_explainer: AbstractDriftExplainer
+        A AbstractDriftExplainer object.
+
     max_n_cat : int (default=20)
         For multiclass classification only. Maximum number of classes to
         represent on the plot.
@@ -52,6 +55,9 @@ def plot_feature_drift(drift_explainer: AbstractDriftExplainer, feature: Union[i
 
     Parameters
     ----------
+    drift_explainer: AbstractDriftExplainer
+        A AbstractDriftExplainer object.
+
     feature : Union[int, str]
         Either the column index or the name of the feature.
 
@@ -104,12 +110,16 @@ def plot_prediction_drift(drift_explainer: ModelDriftExplainer, prediction_type=
 
     Parameters
     ----------
+    drift_explainer: ModelDriftExplainer
+        A ModelDriftExplainer object.
+    
     prediction_type: str, optional (default="raw")
         Type of predictions to consider.
         Choose among:
-        - "raw" : logit predictions (binary classification), log-softmax predictions
+        - "raw": logit predictions (binary classification), log-softmax predictions
         (multiclass classification), regular predictions (regression)
-        - "proba" : predicted probabilities (only for classification models)
+        - "proba": predicted probabilities (only for classification models)
+        - "class": predicted classes (only for classification model)
 
     bins : int or sequence of scalars or str, optional (default=10)
         For regression only. 'two_heads' corresponds to a number of bins which is the minimum of

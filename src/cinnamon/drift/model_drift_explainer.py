@@ -21,51 +21,50 @@ from ..common.constants import TreeBasedDriftValueType, ModelAgnosticDriftValueT
 
 class ModelDriftExplainer(AbstractDriftExplainer):
     """
-    Tool to study data drift between two datasets, in a context where "model" is
-    used to make predictions.
-
+    Study data drift through the lens of a ML model or ML pipeline.
+    
     Parameters
     ----------
 
-    model : a XGBoost model (either XGBClassifier, XGBRegressor, XGBRanker, Booster)
+    model : a ML model or ML pipeline (see "Supported Model" section).
         The model used to make predictions.
 
     iteration_range : Tuple[int, int], optional (default=None)
+        Only for tree based models. 
         Specifies which layer of trees are used. For example, if XGBoost is
-        trained with 100 rounds, specifying iteration_range=(10, 20) then only
-        the trees built during [10, 20) (half open set) iterations are used.
+        trained with 100 rounds, with iteration_range=(10, 20) then only
+        the trees built during [10, 20) iterations are used.
         If None, all trees are used.
 
-    task : string
+    task : string, optional (default=None)
         Task corresponding to the (X, Y) data. Either "regression", "classification",
-        or "ranking". "task" must be provided if the model is treated as a black box predictor
-        (no specific parser for the model).
+        or "ranking". "task" is a mandatory parameter if the model is treated as a black box predictor.
     
     Attributes
     ----------
     predictions1 : numpy array
-        Array of predictions of "model" on X1 (for classification, corresponds
-        to raw predictions).
+        Array of predictions of "model" on X1 dataset. For classification, corresponds
+        to raw (logit of log-softmax) predictions.
 
     predictions2 : numpy array
-        Array of predictions of "model" on X2 (for classification, corresponds
-        to raw predictions).
+        Array of predictions of "model" on X2 dataset. For classification, corresponds
+        to raw (logit of log-softmax) predictions.
 
     pred_proba1 : numpy array
-        Array of predicted probabilities of "model" on X1 (equal to None if
+        Array of predicted probabilities of "model" on X1 (equal to None if task is
         regression or ranking).
 
     pred_proba2 : numpy array
-        Array of predicted probabilities of "model" on X2 (equal to None if
+        Array of predicted probabilities of "model" on X2 (equal to None if task is
         regression or ranking).
 
     iteration_range : tuple of integers
         Layer of trees used.
 
-    feature_drifts : list of dict
+    feature_drifts : list of Union[DriftMetricsCat, DriftMetricsNum]
         Drift measures for each input feature in X.
 
-    target_drift : dict
+    target_drift : Union[DriftMetricsCat, DriftMetricsNum]
         Drift measures for the labels y.
 
     n_features : int
@@ -78,8 +77,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         Class names of the target when task is "classification". Otherwise equal to None.
 
     cat_feature_indices : list of int
-        Indexes of categorical features in input X (not implemented yet: only numerical
-        features are allowed currently).
+        Indexes of categorical features in input X.
 
     X1, X2 : pandas dataframes
         X1 and X2 inputs passed to the "fit" method.
@@ -135,7 +133,8 @@ class ModelDriftExplainer(AbstractDriftExplainer):
             Array of weights that are assigned to individual samples of dataset 2
             If None, then each sample of dataset 2 is given unit weight.
 
-        cat_feature_indices: TODO
+        cat_feature_indices: list of int
+        Indexes of categorical features in input X.
 
         Returns
         -------
@@ -174,9 +173,6 @@ class ModelDriftExplainer(AbstractDriftExplainer):
         """
         Compute drift measures based on model predictions.
 
-        See the documentation in README for explanations about how it is computed,
-        especially the slide presentation.
-
         Parameters
         ----------
         prediction_type: str, optional (default="raw")
@@ -189,7 +185,7 @@ class ModelDriftExplainer(AbstractDriftExplainer):
 
         Returns
         -------
-        prediction_drift : list of DriftMetricsNum object
+        prediction_drift : list of DriftMetricsNum or DriftMetricsCat objects
             Drift measures for each predicted dimension.
         """
         pred1, pred2 = self._get_predictions(prediction_type)
@@ -221,7 +217,8 @@ class ModelDriftExplainer(AbstractDriftExplainer):
 
         Returns
         -------
-        Dictionary of performance metrics
+        performance_metrics_drift: PerformanceMetricsDrift object
+            Comparison of either RegressionMetrics or ClassificaionMetrics objects.
         """
         if self.y1 is None or self.y2 is None:
             self._raise_no_target_error()
@@ -240,17 +237,17 @@ class ModelDriftExplainer(AbstractDriftExplainer):
 
     def get_tree_based_drift_importances(self, type: str = TreeBasedDriftValueType.MEAN.value) -> np.array:
         """
-        Compute drift values using the tree structures present in the model.
+        Compute drift importances using the tree structure of the model.
 
         See the documentation in README for explanations about how it is computed,
         especially the slide presentation.
 
         Parameters
         ----------
-        type: str, optional (default="node_size")
-            Method used for drift values computation.
+        type: str, optional (default="mean")
+            Method used for drift importances computation.
             Choose among:
-            - "node_size" (recommended)
+            - "node_size"
             - "mean"
             - "mean_norm"
 
@@ -281,6 +278,38 @@ class ModelDriftExplainer(AbstractDriftExplainer):
 
     def get_model_agnostic_drift_importances(self, type: str = ModelAgnosticDriftValueType.MEAN.value, prediction_type: str = "raw",
                                         max_ratio: float = 10, max_n_cat: int = 20) -> np.array:
+        """
+        Compute drift importances using the model agnostic method.
+
+        See the documentation in README for explanations about how it is computed,
+        especially the slide presentation.
+
+        Parameters
+        ----------
+        type: str, optional (default="mean")
+            Method used for drift importances computation.
+            Choose among:
+            - "mean"
+            - "wasserstein"
+
+            See details in slide presentation.
+
+        prediction_type: str,  optional (default="raw")
+            Choose among:
+            - "raw"
+            - "proba": predicted probability if task == 'classification'
+            - "class": predicted class if task == 'classification'
+
+        max_ratio: int, optional (default=10)
+            Only used for categorical features
+
+        max_n_cat: int, optional (default=20)
+            Only used for categorical features
+        
+        Returns
+        -------
+        drift_importances : numpy array
+        """
         if type not in [x.value for x in ModelAgnosticDriftValueType]:
             raise ValueError(f'Bad value for "type": {type}')
         pred1, pred2 = self._get_predictions(prediction_type)
@@ -418,5 +447,5 @@ class ModelDriftExplainer(AbstractDriftExplainer):
 
     @staticmethod
     def _raise_not_implem_feature_error():
-        raise NotImplementedError('Model agnostic drift values (only based on model predictions) will be '
+        raise NotImplementedError('Model agnostic drift importances (only based on model predictions) will be '
                                   'implemented in future version')

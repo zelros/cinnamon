@@ -418,7 +418,7 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
                               [-0.00963751]]),
                     atol=NUMPY_atol)
 
-    # model agnostic drift values "mean"
+    # model agnostic drift importances "mean"
     assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='mean'),
                     np.array([[-0.28899426],
        [-0.21982124],
@@ -452,7 +452,7 @@ def test_breast_cancer_catboost_ModelDriftExplainer():
        [ 0.02380675]]),
                     atol=NUMPY_atol)
 
-    # model agnostic drift values "wasserstein"
+    # model agnostic drift importances "wasserstein"
     assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='wasserstein'),
                     np.array([[0.32594406],
        [0.22173909],

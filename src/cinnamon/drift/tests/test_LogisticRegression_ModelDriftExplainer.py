@@ -92,7 +92,7 @@ def test_LogisticRegression_ModelDriftExplainer():
                               [-0.09303799]]),
                     atol=1e-2)
 
-    # model agnostic drift values "wasserstein"
+    # model agnostic drift importances "wasserstein"
     assert_allclose(drift_explainer.get_model_agnostic_drift_importances(type='wasserstein'),
                     np.array([[1.03235411],
                               [0.39986026],
