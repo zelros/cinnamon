@@ -39,7 +39,6 @@ class ModelAgnosticModelParser(AbstractModelParser):
                     return log_softmax(self.predict_proba(X))
 
     def predict_class(self, X: pd.DataFrame):
-        # drift on predicted class is not handled in current version
         if self.task == 'classification':
             return self.original_model.predict(X)
         else:
