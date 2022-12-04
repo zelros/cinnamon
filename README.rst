@@ -11,9 +11,9 @@
 .. |PyPi| image:: https://img.shields.io/pypi/v/cinnamon
 .. _PyPi: https://pypi.org/project/cinnamon/
 
-
-CinnaMon
-============
+===============================
+Introduction to CinnaMon 
+===============================
 
 **CinnaMon** is a Python library which allows to monitor data drift on a 
 machine learning system. It provides tools to study data drift between two datasets,
@@ -125,9 +125,11 @@ CinnaMon is intended to work with **Python 3.7 or above**. Installation can be d
 🔗 Notes
 ===========
 
+- CinnaMon `documentation <https://cinnamon.readthedocs.io/en/latest>`_
 - The two main classes of CinnaMon are ``ModelDriftExplainer`` and ``AdversarialDriftExplainer``
-- ``ModelDriftExplainer`` currently only support ``XGBoost`` models (both regression and classification
-  are supported)
+- CinnaMon supports both model specific and model agnostic methods for the computation of 
+  drift importances. More information `here <https://cinnamon.readthedocs.io/en/latest/model_support.html>`_.
+- CinnaMon can be used with any model or ML pipeline thanks to model agnostic mode.
 - See notebooks in the ``examples/`` directory to have an overview of all functionalities. 
   Notably:
 
@@ -135,14 +137,13 @@ CinnaMon is intended to work with **Python 3.7 or above**. Installation can be d
   - `Concept drift example with IEEE data <https://github.com/zelros/cinnamon/blob/master/examples/ieee_fraud_simulated_concept_drift_card6.ipynb>`_
     
   These two notebooks also go deeper into the topic of how to correct data drift, making use of ``AdversarialDriftExplainer``
-- See also the `slide presentation <https://yohannlefaou.github.io/publications/2021-cinnamon/Detect_explain_and_correct_data_drift_in_a_machine_learning_system.pdf>`_ of the CinnaMon library.
-- There is (yet) no formal documentation for CinnaMon but docstrings are up to date for the two main classes.
-
+- See also the `slide presentation <https://yohannlefaou.github.io/publications/2021-cinnamon/Detect_explain_and_correct_data_drift_in_a_machine_learning_system.pdf>`_
+  of the CinnaMon library. And the `video presentation <https://www.youtube.com/watch?v=S3qoBBwSS1I>`_.
 
 👍 Contributing
 =================
 
-Check out the `contribution <https://github.com/zelros/cinnamon/blob/master/CONTRIBUTING.md) section>`_.
+Check out the `contribution <https://github.com/zelros/cinnamon/blob/master/CONTRIBUTING.md>`_ section.
 
 📝 License
 ============

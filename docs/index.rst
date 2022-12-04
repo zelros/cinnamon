@@ -3,33 +3,24 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-.. include:: ../README.rst 
-
+=======================================
 Welcome to cinnamon's documentation!
-====================================
+=======================================
+
+**CinnaMon** is a Python library which allows to monitor data drift on a 
+machine learning system. It provides tools to study data drift between two datasets,
+especially to detect, explain, and correct data drift.
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
-
-hello !
-
-
-API
-===
+   quickstart
+   model_support
 
 .. toctree::
    :maxdepth: 2
-   :hidden:
    :caption: API
 
    api
+   plot_api

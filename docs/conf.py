@@ -11,7 +11,7 @@ import sphinx_rtd_theme
 project = 'cinnamon'
 copyright = '2022, Yohann le Faou'
 author = 'Yohann le Faou'
-release = '0.1, 0.2'
+release = '0.2'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -34,12 +34,19 @@ intersphinx_disabled_domains = ['std']
 templates_path = ['_templates']
 exclude_patterns = ['_build', '_templates', 'Thumbs.db', '.DS_Store']
 
+# The name of the Pygments (syntax highlighting) style to use.
+pygments_style = "sphinx"
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "sphinx_rtd_theme"
+
 html_static_path = ['_static']
+
+# Custom style
+html_style = "css/project-template.css"
+
+html_theme = "sphinx_rtd_theme"
 
 html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
