@@ -10,7 +10,7 @@ setup(
     author_email="lefaou.yohann@gmail.com",
     description="A monitoring tool for machine learning systems that focus on data drift",
     long_description=long_description,
-    long_description_content_type="text/markdown",
+    long_description_content_type="text/x-rst",
     url="https://github.com/zelros/cinnamon",
     project_urls={
         "Source Code": "https://github.com/zelros/cinnamon",
