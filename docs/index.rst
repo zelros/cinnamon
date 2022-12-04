@@ -13,7 +13,7 @@ especially to detect, explain, and correct data drift.
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+   :caption: Contents
 
    quickstart
    model_support
