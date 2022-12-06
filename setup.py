@@ -28,9 +28,9 @@ setup(
     package_dir={"": "src"},
     packages=find_packages(where="src"),
     license="MIT",
-    python_requires=">=3.6",
+    python_requires=">=3.7",
     install_requires=["pandas>=1.0",
-                      "scikit-learn>=0.24",  # can switch to 1.0 when I switch to Python 3.7 support
+                      "scikit-learn>=1.0",
                       "xgboost>=1.4",
                       "catboost>=1.0"],
     extras_require={"graphs": ["matplotlib>=3.4.3", "treelib>=1.6.1"]},

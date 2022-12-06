@@ -55,6 +55,7 @@ Initialize ModelDriftExplainer and fit on train and validation data
 
 .. code:: python
 
+    >>> import cinnamon
     >>> from cinnamon.drift import ModelDriftExplainer
 
     # initialize a drift explainer with the built XGBClassifier and fit it on train
@@ -68,7 +69,7 @@ Detect data drift by looking at main graphs and metrics
 .. code:: python
 
     # Distribution of logit predictions
-    >>> drift_explainer.plot_prediction_drift(bins=15)
+    >>> cinnamon.plot_prediction_drift(drift_explainer, bins=15)
 
 .. image:: https://github.com/zelros/cinnamon/raw/master/docs/img/plot_prediction_drift.png
     :width: 400
@@ -100,7 +101,7 @@ Drift importances can be thought as equivalent of feature importances but in ter
 .. code:: python
 
     # plot drift importances
-    >>> drift_explainer.plot_tree_based_drift_importances(n=7)
+    >>> cinnamon.plot_tree_based_drift_importances(drift_explainer, n=7)
 
 .. image:: https://github.com/zelros/cinnamon/raw/master/docs/img/plot_drift_values.png
     :width: 400
